@@ -6,15 +6,12 @@
 // collection entirely (see bg/storage.js:232-252).
 import { NextRequest, NextResponse } from "next/server";
 import { insertSnapshot, getRecentSnapshots } from "@/lib/db";
+import { parseSnapshotBody } from "@/lib/snapshot";
 import { computeRecommendation } from "@/lib/plans";
 import { checkAuth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function num(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
-}
 
 export async function POST(req: NextRequest) {
   checkAuth(req);
@@ -26,31 +23,13 @@ export async function POST(req: NextRequest) {
     body = {};
   }
 
-  const email: string = body.user_email || body.email || "unknown@local";
-  const collectedAt: string = body.collected_at || new Date().toISOString();
-  const plan: string | null = body.plan ?? null;
-  const provider: string = body.provider || "claude";
-  const orgUuid: string | null = body.claude_org_uuid ?? null;
-  const extra = body.extra_usage || null;
+  const input = parseSnapshotBody(body);
+  insertSnapshot(input);
 
-  insertSnapshot({
-    user_email: email,
-    provider,
-    plan,
-    org_uuid: orgUuid,
-    install_id: body.install_id ?? null,
-    five_hour_utilization: num(body.five_hour?.utilization),
-    five_hour_resets_at: body.five_hour?.resets_at ?? null,
-    seven_day_utilization: num(body.seven_day?.utilization),
-    seven_day_resets_at: body.seven_day?.resets_at ?? null,
-    extra_usage_used: num(extra?.used_credits),
-    extra_usage_limit: num(extra?.monthly_limit),
-    collected_at: collectedAt,
-    raw: JSON.stringify(body),
+  const recent = getRecentSnapshots(input.user_email, 200, {
+    provider: input.provider,
   });
-
-  const recent = getRecentSnapshots(email, 200, { provider });
-  const recommendation = computeRecommendation(recent, plan);
+  const recommendation = computeRecommendation(recent, input.plan);
 
   const res: Record<string, unknown> = { success: true };
   // Only ship history when asked (first sync / empty local cache) to keep the
@@ -59,8 +38,8 @@ export async function POST(req: NextRequest) {
   if (recommendation) res.recommendation = recommendation;
 
   console.log(
-    `[ct-server] POST /api/snapshots ${email} plan=${plan} 7d=${
-      num(body.seven_day?.utilization) ?? "-"
+    `[ct-server] POST /api/snapshots ${input.user_email} (${input.provider}) plan=${input.plan} 7d=${
+      input.seven_day_utilization ?? "-"
     }%${recommendation ? ` rec=${recommendation.type}->${recommendation.to_plan}` : ""}`
   );
 

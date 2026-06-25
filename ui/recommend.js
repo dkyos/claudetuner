@@ -82,7 +82,7 @@ function renderFitnessMatrix(data) {
   for (const l of legend) {
     html += '<span class="fm-legend-item"><span class="fm-icon ' + l.cls + '">' + l.icon + '</span>' + l.label + '</span>';
   }
-  html += '</div><a href="http://localhost:3000/dashboard" target="_blank">' + t('fm_reason') + ' →</a></div>';
+  html += '</div><a href="' + CT_CONFIG.DEFAULT_SERVER_URL + '/dashboard" target="_blank">' + t('fm_reason') + ' →</a></div>';
   content.innerHTML = html;
 }
 
