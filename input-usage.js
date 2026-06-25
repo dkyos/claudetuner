@@ -388,7 +388,7 @@
       let iconUrl = '';
       try { iconUrl = chrome.runtime.getURL('icons/icon16.png'); } catch { /* ignore */ }
       strip.innerHTML = `
-        ${iconUrl ? `<a href="https://claudetuner.com/dashboard/?utm_source=input" target="_blank" class="ct-logo-link"><img src="${iconUrl}" class="ct-logo" alt="CT"></a>` : ''}
+        ${iconUrl ? `<a href="http://localhost:3000/dashboard/?utm_source=input" target="_blank" class="ct-logo-link"><img src="${iconUrl}" class="ct-logo" alt="CT"></a>` : ''}
         <div class="ct-seg">
           <span class="ct-seg-label">${escapeHtml(t('brand'))}</span>
           <span class="ct-seg-value">${escapeHtml(t('no_data'))}</span>
@@ -406,7 +406,7 @@
     try { iconUrl = chrome.runtime.getURL('icons/icon16.png'); } catch { /* ignore */ }
 
     let html = '';
-    if (iconUrl) html += `<a href="https://claudetuner.com/dashboard/?utm_source=input" target="_blank" class="ct-logo-link"><img src="${iconUrl}" class="ct-logo" alt="CT"></a>`;
+    if (iconUrl) html += `<a href="http://localhost:3000/dashboard/?utm_source=input" target="_blank" class="ct-logo-link"><img src="${iconUrl}" class="ct-logo" alt="CT"></a>`;
 
     html += `<div class="ct-seg"><span class="ct-seg-label">${escapeHtml(t('usage_5h'))}</span><span class="ct-seg-value" style="color:${color5h}">${util5h}%</span></div>`;
 

@@ -189,7 +189,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
           <span class="ct-cg-bell-badge" id="ct-cg-bell-badge" style="display:none"></span>
         </button>
-        <a href="${SITE_URL}/dashboard/?utm_source=chatgpt_sidebar" target="_blank" rel="noopener" title="${CORE.escapeHtml(t('dashboard'))}">
+        <a href="http://localhost:3000/dashboard/?utm_source=chatgpt_sidebar" target="_blank" rel="noopener" title="${CORE.escapeHtml(t('dashboard'))}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         </a>
         <button class="ct-cg-settings-btn" title="${CORE.escapeHtml(t('settings'))}">

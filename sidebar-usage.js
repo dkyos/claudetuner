@@ -274,7 +274,7 @@
     header.className = 'ct-sb-header';
     const logoUrl = chrome.runtime.getURL('icons/icon16.png');
     header.innerHTML = `
-      <a href="${SITE_URL}/dashboard/?utm_source=sidebar" target="_blank" rel="noopener" class="ct-sb-logo-link" title="Claude Tuner Dashboard">
+      <a href="http://localhost:3000/dashboard/?utm_source=sidebar" target="_blank" rel="noopener" class="ct-sb-logo-link" title="Claude Tuner Dashboard">
         <img src="${logoUrl}" class="ct-sb-logo" alt="CT">
       </a>
       <span class="ct-sb-title text-text-500">Usage</span>
@@ -455,7 +455,7 @@
         </svg>
         <span class="ct-sb-bell-badge" id="ct-sb-bell-badge" style="display:none"></span>
       </button>
-      <a href="${SITE_URL}/dashboard/" target="_blank" rel="noopener" title="${t('dashboard')}">
+      <a href="http://localhost:3000/dashboard/" target="_blank" rel="noopener" title="${t('dashboard')}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-text-500">
           <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/>
           <polyline points="15 3 21 3 21 9"/>

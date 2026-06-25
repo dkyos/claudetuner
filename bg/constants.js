@@ -1,6 +1,6 @@
 // === Constants & Configuration ===
 
-export const DEFAULT_SERVER_URL = 'https://api.claudetuner.com';
+export const DEFAULT_SERVER_URL = 'http://localhost:3000';
 export const DEFAULT_API_KEY = 'claude-manager-dev-key-2024';
 export const SITE_URL = 'https://claudetuner.com';
 

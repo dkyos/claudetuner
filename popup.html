@@ -332,14 +332,11 @@
     <h1><a href="https://claudetuner.com" target="_blank" style="color:inherit;text-decoration:none">ClaudeTuner</a></h1>
     <div class="header-actions">
       <button id="collect-btn" class="hdr-btn hdr-btn-primary" data-i18n="btn_collect"></button>
-      <a href="https://claudetuner.com/dashboard" target="_blank" class="hdr-btn hdr-btn-link" data-i18n-title="btn_detail" title="Analytics"><svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="flex:none"><path d="M3 3a1 1 0 011 1v12h12a1 1 0 110 2H3a1 1 0 01-1-1V4a1 1 0 011-1zm14 3a1 1 0 011 1v2a1 1 0 11-2 0V9.414l-3.293 3.293a1 1 0 01-1.414 0L9 10.414l-2.293 2.293a1 1 0 01-1.414-1.414l3-3a1 1 0 011.414 0L12 10.586 14.586 8H13a1 1 0 110-2h4z"/></svg></a>
+      <a href="http://localhost:3000/dashboard" target="_blank" class="hdr-btn hdr-btn-link" data-i18n-title="btn_detail" title="Analytics"><svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="flex:none"><path d="M3 3a1 1 0 011 1v12h12a1 1 0 110 2H3a1 1 0 01-1-1V4a1 1 0 011-1zm14 3a1 1 0 011 1v2a1 1 0 11-2 0V9.414l-3.293 3.293a1 1 0 01-1.414 0L9 10.414l-2.293 2.293a1 1 0 01-1.414-1.414l3-3a1 1 0 011.414 0L12 10.586 14.586 8H13a1 1 0 110-2h4z"/></svg></a>
       <button id="notice-toggle-btn" class="hdr-btn-icon" title="Announcements" style="display:none;position:relative">
         <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-2.83-2h5.66A3 3 0 0110 18z"/></svg>
         <span id="notice-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:white;font-size:8px;font-weight:700;min-width:13px;height:13px;border-radius:50%;align-items:center;justify-content:center;line-height:1">0</span>
       </button>
-      <a href="https://tally.so/r/q4dyQk" target="_blank" class="hdr-btn-icon" title="Feedback">
-        <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zm-4 0H9v2h2V9z" clip-rule="evenodd"/></svg>
-      </a>
       <button id="open-tab-btn" class="hdr-btn-icon" title="Open as side panel">
         <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm1 0v12h4V4H4zm6 0v12h6V4h-6z" clip-rule="evenodd"/></svg>
       </button>
@@ -470,7 +467,7 @@
       </div>
     </div>
     <button class="ob-cta" id="ob-collect-btn" data-i18n="ob_cta"></button>
-    <a href="https://claudetuner.com/dashboard" target="_blank" class="ob-cta-secondary" data-i18n="ob_step3_title"></a>
+    <a href="http://localhost:3000/dashboard" target="_blank" class="ob-cta-secondary" data-i18n="ob_step3_title"></a>
     <div class="ob-link"><a href="https://claudetuner.com/welcome/" target="_blank" data-i18n="ob_guide_link"></a></div>
   </div>
 
@@ -479,7 +476,7 @@
 
   <!-- One-time dashboard nudge (shown after first successful collection) -->
   <div id="dash-nudge" class="dash-nudge hidden">
-    <a href="https://claudetuner.com/dashboard" target="_blank" id="dash-nudge-link" class="dash-nudge-link">
+    <a href="http://localhost:3000/dashboard" target="_blank" id="dash-nudge-link" class="dash-nudge-link">
       <span>📊</span><span data-i18n="dash_nudge"></span><span class="dash-nudge-arrow">→</span>
     </a>
     <button id="dash-nudge-close" class="dash-nudge-close" data-i18n-title="dash_nudge_dismiss" title="Dismiss" aria-label="Dismiss">&times;</button>

@@ -247,9 +247,12 @@ async function collectAndSend(opts) {
   }
 }
 
-// Domain migration: auto-migrate existing users' serverUrl
+// Domain migration: force existing users off any claudetuner cloud backend onto
+// the local one. getConfig() reads serverUrl from chrome.storage.sync with
+// DEFAULT_SERVER_URL only as a fallback, so a previously-saved cloud URL would
+// otherwise keep overriding the local default.
 chrome.storage.sync.get({ serverUrl: '' }, ({ serverUrl }) => {
-  if (serverUrl === 'https://api.claudetuner.letrun.ai') {
+  if (serverUrl && serverUrl !== DEFAULT_SERVER_URL && /claudetuner/.test(serverUrl)) {
     chrome.storage.sync.set({ serverUrl: DEFAULT_SERVER_URL });
   }
 });

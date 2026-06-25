@@ -16,7 +16,8 @@
   ],
   "host_permissions": [
     "https://claude.ai/*",
-    "https://claudetuner.com/*"
+    "https://claudetuner.com/*",
+    "http://localhost:3000/*"
   ],
   "optional_host_permissions": [
     "https://chatgpt.com/*",

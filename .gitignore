@@ -1,0 +1,13 @@
+# Local Next.js backend (server/)
+server/node_modules
+server/.next
+server/out
+server/data.sqlite
+server/data.sqlite-journal
+server/data.sqlite-wal
+server/data.sqlite-shm
+server/*.tsbuildinfo
+server/next-env.d.ts
+
+# OS / editor
+.DS_Store

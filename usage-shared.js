@@ -70,7 +70,7 @@
   const PRED_MIN_DELTA = 3;
 
   // ── Announcements (shared by the Claude + ChatGPT sidebars) ──
-  const ANNOUNCE_URL = 'https://api.claudetuner.com/api/announcements';
+  const ANNOUNCE_URL = 'http://localhost:3000/api/announcements';
   const NOTICE_BASE = 'https://notice.claudetuner.com/';
 
   // Returns `true` if version `a` >= version `b` (dotted numeric compare).

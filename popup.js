@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     fmSection.title = 'Dashboard';
     fmSection.addEventListener('click', (e) => {
       if (e.target.closest('a')) return;
-      chrome.tabs.create({ url: 'https://claudetuner.com/dashboard' });
+      chrome.tabs.create({ url: 'http://localhost:3000/dashboard' });
     });
   }
 
@@ -548,7 +548,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   // Chart card click opens dashboard
   document.getElementById('chart-section').addEventListener('click', () => {
-    chrome.tabs.create({ url: 'https://claudetuner.com/dashboard' });
+    chrome.tabs.create({ url: 'http://localhost:3000/dashboard' });
   });
 
   // Smart recommendation dismiss button

@@ -1,0 +1,11 @@
+/node_modules
+/.next
+/out
+*.tsbuildinfo
+next-env.d.ts
+
+# Local SQLite database (personal usage data)
+data.sqlite
+data.sqlite-journal
+data.sqlite-wal
+data.sqlite-shm

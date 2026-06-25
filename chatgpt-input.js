@@ -152,7 +152,7 @@
     }
     strip.innerHTML =
       `<div class="ct-cg-strip-inner">` +
-        `<a class="ct-cg-strip-main" href="${SITE_URL}/dashboard/?utm_source=chatgpt_input" target="_blank" rel="noopener">${main}</a>` +
+        `<a class="ct-cg-strip-main" href="http://localhost:3000/dashboard/?utm_source=chatgpt_input" target="_blank" rel="noopener">${main}</a>` +
         `<button class="ct-cg-strip-gear" title="${CORE.escapeHtml(t('settings'))}" aria-label="${CORE.escapeHtml(t('settings'))}">${GEAR_SVG}</button>` +
         `<a class="ct-cg-strip-gear ct-cg-strip-contact" href="${contactUrl()}" target="_blank" rel="noopener" title="${CORE.escapeHtml(t('contact'))}" aria-label="${CORE.escapeHtml(t('contact'))}">${CONTACT_SVG}</a>` +
       `</div>`;
