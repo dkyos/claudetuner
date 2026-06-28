@@ -6,11 +6,9 @@
   'use strict';
 
   const CT_PANEL_ID = 'ct-sidebar-usage';
-  const SITE_URL = 'https://claudetuner.com';
   const MOUNT_INTERVAL_MS = 1000;
   const COUNTDOWN_INTERVAL_MS = 1000;
 
-  const NOTICE_BASE = 'https://notice.claudetuner.com/';
   const CORE = globalThis.__ctUsageCore;
 
   // ── State ──
@@ -209,7 +207,7 @@
           const u = new URL(url);
           if (u.protocol !== 'http:' && u.protocol !== 'https:') url = '';
         } catch { url = ''; }
-        if (!url) url = NOTICE_BASE + _lang;
+        if (!url) url = CORE.NOTICE_BASE;
         window.open(url + (url.includes('?') ? '&' : '?') + 'utm_source=sidebar', '_blank');
       });
 
@@ -470,9 +468,9 @@
       </button>
     `;
 
-    // Bell click → open notice page + save last seen ID
+    // Bell click → open the local dashboard + save last seen ID
     actions.querySelector('.ct-sb-bell-btn').addEventListener('click', () => {
-      window.open(NOTICE_BASE + _lang + '?utm_source=sidebar', '_blank');
+      window.open(CORE.NOTICE_BASE, '_blank');
       if (_notices.length > 0) {
         _lastSeenId = _notices[0].id;
         chrome.storage.local.set({ ct_last_seen_notice_id: _lastSeenId });

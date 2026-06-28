@@ -168,10 +168,12 @@ This fork already targets `http://localhost:3000`. Start the bundled server:
 cd server && npm install && npm run dev
 ```
 
-To point at a different host, edit `chrome-extension/config.js` (keep
-`chrome-extension/bg/constants.js` in sync):
+To change the host/port, edit **two files** (`chrome-extension/config.js` and
+`chrome-extension/bg/constants.js` — keep them in sync) and start the server on the
+matching port:
 
 ```js
+// chrome-extension/config.js  (and the same values in bg/constants.js)
 const CT_CONFIG = {
   DEFAULT_SERVER_URL: 'http://localhost:3000',
   DEFAULT_API_KEY: 'your-api-key',
@@ -179,7 +181,13 @@ const CT_CONFIG = {
 };
 ```
 
-See [docs/API.md](docs/API.md) for the full server API specification.
+```bash
+# server on a custom port:
+PORT=4000 npm run dev
+```
+
+The manifest grants `http://localhost/*` (port-agnostic), so a localhost port change
+needs no manifest edit. See [docs/API.md](docs/API.md) for the full server API spec.
 
 ## Privacy
 

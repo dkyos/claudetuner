@@ -263,7 +263,7 @@ const TRANSLATIONS = {
     // Organization selection
     'org_select': '모니터링 조직',
     'org_select_hint': '여러 조직에 가입된 경우, 수집할 조직을 선택하세요.',
-    'org_managed_in_dashboard': '활성 조직은 이제 <a href="https://claudetuner.com/dashboard/settings/" target="_blank" rel="noopener">대시보드 설정</a>에서 관리합니다. (최대 3개)',
+    'org_managed_in_dashboard': '활성 조직은 팝업의 조직 선택에서 관리합니다. (최대 3개)',
     'org_auto': '자동',
     'org_auto_current': '현재 수집: {0} ({1})',
     'org_changed': '조직이 변경되었습니다. 데이터가 초기화됩니다.',
@@ -630,7 +630,7 @@ const TRANSLATIONS = {
     // Org selection
     'org_select': 'Monitoring Organization',
     'org_select_hint': 'If you belong to multiple orgs, select which one to monitor.',
-    'org_managed_in_dashboard': 'Active organizations are now managed in the <a href="https://claudetuner.com/dashboard/settings/" target="_blank" rel="noopener">dashboard settings</a> (max 3).',
+    'org_managed_in_dashboard': 'Active organizations are managed in the popup org selector (max 3).',
     'org_auto': 'Auto',
     'org_auto_current': 'Currently collecting: {0} ({1})',
     'org_changed': 'Organization changed. Data has been reset.',
@@ -786,10 +786,5 @@ function applyI18n() {
   });
   document.querySelectorAll('[data-i18n-title]').forEach((el) => {
     el.title = t(el.getAttribute('data-i18n-title'));
-  });
-  document.querySelectorAll('a[href*="claudetuner.com/welcome"]').forEach((el) => {
-    const u = new URL(el.href);
-    u.searchParams.set('lang', _currentLang);
-    el.href = u.toString();
   });
 }

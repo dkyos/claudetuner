@@ -168,9 +168,10 @@ git clone https://github.com/chaehyun2/claudetuner.git
 cd server && npm install && npm run dev
 ```
 
-다른 호스트를 쓰려면 `chrome-extension/config.js`를 수정하세요(`chrome-extension/bg/constants.js`도 함께):
+호스트/포트를 바꾸려면 **두 파일**(`chrome-extension/config.js` + `chrome-extension/bg/constants.js` — 동일하게 유지)을 수정하고 서버를 같은 포트로 실행하세요:
 
 ```js
+// chrome-extension/config.js (bg/constants.js에도 같은 값)
 const CT_CONFIG = {
   DEFAULT_SERVER_URL: 'http://localhost:3000',
   DEFAULT_API_KEY: 'your-api-key',
@@ -178,6 +179,12 @@ const CT_CONFIG = {
 };
 ```
 
+```bash
+# 다른 포트로 서버 실행:
+PORT=4000 npm run dev
+```
+
+manifest는 `http://localhost/*`(포트 무관)이라 로컬 포트 변경에 manifest 수정은 불필요합니다.
 서버 API 명세는 [docs/API.md](docs/API.md)를 참조하세요.
 
 ## 개인정보 보호

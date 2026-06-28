@@ -20,6 +20,9 @@ This fork ships a local backend the extension talks to at `http://localhost:3000
 cd server
 npm install
 npm run dev        # http://localhost:3000  (dashboard at /dashboard)
+# Different port: PORT=4000 npm run dev — then set the same host/port in
+# chrome-extension/config.js + chrome-extension/bg/constants.js (manifest is
+# port-agnostic "http://localhost/*", so it needs no change).
 ```
 
 It uses Node's builtin `node:sqlite` — no native build tools. The DB lives at

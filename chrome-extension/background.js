@@ -6,7 +6,7 @@ import {
   LOCAL_ACTIVE_INTERVAL_MINUTES, LOCAL_BACKGROUND_INTERVAL_MINUTES,
   VISIBILITY_THROTTLE_MS, POPUP_COLLECT_THROTTLE_MS,
   NOTIF_ID_OPTIMIZE, NOTIF_ID_ALERT,
-  DEFAULT_SERVER_URL, SITE_URL,
+  DEFAULT_SERVER_URL,
   SEND_MIN_INTERVAL_MS,
 } from './bg/constants.js';
 import { getActivityState, setActivityState, ACTIVITY_STATES } from './bg/activity.js';
@@ -42,7 +42,7 @@ function hasProviderPermission(provider) {
 const CHATGPT_INJECT = {
   id: 'ct-chatgpt-usage',
   matches: ['https://chatgpt.com/*'],
-  js: ['usage-shared.js', 'chatgpt-sidebar.js', 'chatgpt-input.js'],
+  js: ['config.js', 'usage-shared.js', 'chatgpt-sidebar.js', 'chatgpt-input.js'],
   css: ['chatgpt-usage.css'],
   runAt: 'document_idle',
 };
@@ -313,14 +313,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     // uses. (Do NOT use chrome.i18n.getUILanguage()/bgLang here: it reflects
     // Chrome's app UI language, which can differ from navigator.language and would
     // mismatch what the user sees in the popup.)
-    let explicitLang = null;
-    try {
-      const { lang } = await chrome.storage.sync.get({ lang: 'auto' });
-      if (lang === 'ko' || lang === 'en') explicitLang = lang;
-    } catch (e) { /* fall through with no param */ }
-    const welcomeUrl = new URL('/welcome/', SITE_URL);
-    if (explicitLang) welcomeUrl.searchParams.set('lang', explicitLang);
-    chrome.tabs.create({ url: welcomeUrl.toString() });
+    // No external welcome page in the local fork — skip opening a welcome tab.
     // Allow auto-open side panel on first Claude.ai visit (fresh install only)
     await chrome.storage.local.set({ sidePanelAutoOpened: false });
   } else if (details.reason === 'update') {

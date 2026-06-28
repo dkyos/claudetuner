@@ -1,8 +1,12 @@
 // === Constants & Configuration ===
+// ⚙️ SERVER ADDRESS — service-worker copy. Keep DEFAULT_SERVER_URL / SITE_URL in
+// sync with config.js (the classic script for content/popup). To change host/port,
+// edit both files and start the server on the matching PORT (manifest is
+// port-agnostic "http://localhost/*").
 
 export const DEFAULT_SERVER_URL = 'http://localhost:3000';
 export const DEFAULT_API_KEY = 'claude-manager-dev-key-2024';
-export const SITE_URL = 'https://claudetuner.com';
+export const SITE_URL = 'http://localhost:3000';
 
 export const ALARM_NAME = 'claude-usage-poll';
 export const ALARM_EXPIRE_PREFIX = 'claude-expire-';

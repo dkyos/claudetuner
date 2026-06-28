@@ -18,7 +18,6 @@
   const isCurrent = () => _gen === globalThis.__ctCgInputGen && CORE.isContextValid();
 
   const STRIP_ID = 'ct-cg-strip';
-  const SITE_URL = 'https://claudetuner.com';
   const CONTACT_URL = 'https://tally.so/r/q4dyQk'; // shared feedback/inquiry form (same as popup)
   const MOUNT_INTERVAL_MS = 1000;
   const COUNTDOWN_INTERVAL_MS = 1000;

@@ -16,8 +16,7 @@
   ],
   "host_permissions": [
     "https://claude.ai/*",
-    "https://claudetuner.com/*",
-    "http://localhost:3000/*"
+    "http://localhost/*"
   ],
   "optional_host_permissions": [
     "https://chatgpt.com/*",
@@ -45,21 +44,16 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "externally_connectable": {
-    "matches": [
-      "https://claudetuner.com/*"
-    ]
-  },
   "content_scripts": [{
     "matches": ["https://claude.ai/*"],
     "css": ["sidebar-usage.css", "input-usage.css"],
-    "js": ["usage-shared.js", "sidebar-usage.js", "input-usage.js"],
+    "js": ["config.js", "usage-shared.js", "sidebar-usage.js", "input-usage.js"],
     "run_at": "document_idle"
   }],
   "web_accessible_resources": [{
     "resources": ["icons/icon48.png"],
     "matches": [
-      "https://claudetuner.com/*"
+      "http://localhost/*"
     ]
   }, {
     "resources": ["icons/icon16.png"],

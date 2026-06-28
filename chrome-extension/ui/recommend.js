@@ -231,8 +231,9 @@ export function showRecFeedback(recType) {
       const copy = document.getElementById('rft-copy');
       if (shareText) shareText.textContent = t('rec_fb_share');
       if (review) { review.textContent = t('rec_fb_review'); review.onclick = () => { sendGAEvent('rec_share_review'); }; }
-      if (twitter) twitter.href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent('ClaudeTuner helped me optimize my Claude AI plan! Try it free: https://claudetuner.com #Claude #ClaudeTuner');
-      if (copy) { copy.textContent = t('rec_fb_copy'); copy.onclick = () => { navigator.clipboard.writeText('https://claudetuner.com'); copy.textContent = 'Copied!'; }; }
+      // External share buttons (Twitter / claudetuner.com) removed for the local fork.
+      if (twitter) twitter.style.display = 'none';
+      if (copy) copy.style.display = 'none';
       setTimeout(() => { toast.style.display = 'none'; }, 15000);
     };
 

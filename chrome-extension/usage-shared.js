@@ -70,8 +70,11 @@
   const PRED_MIN_DELTA = 3;
 
   // ── Announcements (shared by the Claude + ChatGPT sidebars) ──
-  const ANNOUNCE_URL = 'http://localhost:3000/api/announcements';
-  const NOTICE_BASE = 'https://notice.claudetuner.com/';
+  // Server address comes from CT_CONFIG (config.js, injected before this file).
+  const SITE_URL = (typeof CT_CONFIG !== 'undefined' && CT_CONFIG.SITE_URL) || 'http://localhost:3000';
+  const ANNOUNCE_URL = ((typeof CT_CONFIG !== 'undefined' && CT_CONFIG.DEFAULT_SERVER_URL) || 'http://localhost:3000') + '/api/announcements';
+  // "More notices" / bell open the local dashboard (no external notice site).
+  const NOTICE_BASE = SITE_URL + '/dashboard';
 
   // Returns `true` if version `a` >= version `b` (dotted numeric compare).
   function compareVersions(a, b) {

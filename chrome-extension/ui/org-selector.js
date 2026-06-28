@@ -451,7 +451,7 @@ export function showMultiOrgBadges(collectedOrgs) {
   // Cap enforcement is server-side; this is just a discoverability nudge.
   if (collectedOrgs.length > 3) {
     const capRow = document.createElement('a');
-    capRow.href = 'https://claudetuner.com/dashboard/settings/';
+    capRow.href = CT_CONFIG.SITE_URL + '/dashboard';
     capRow.target = '_blank';
     capRow.rel = 'noopener';
     capRow.style.cssText = 'display:block;padding:6px 10px;border-top:1px solid var(--border);font-size:10px;color:var(--accent);text-decoration:none;text-align:center;background:var(--bg-hover)';

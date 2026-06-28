@@ -20,7 +20,7 @@ function _compareVersions(a, b) {
 
 function _sanitizeNoticeHtml(html) {
   if (!html) return '';
-  const SITE = 'https://claudetuner.com';
+  const SITE = CT_CONFIG.SITE_URL;
   // DOM-based sanitizer: allow only a, br tags, remove the rest
   const doc = new DOMParser().parseFromString(html, 'text/html');
   function walk(node) {

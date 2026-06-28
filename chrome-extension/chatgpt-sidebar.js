@@ -18,7 +18,6 @@
   const isCurrent = () => _gen === globalThis.__ctCgSidebarGen && CORE.isContextValid();
 
   const PANEL_ID = 'ct-cg-sidebar';
-  const SITE_URL = 'https://claudetuner.com';
   const MOUNT_INTERVAL_MS = 1000;
   const COUNTDOWN_INTERVAL_MS = 1000;
   const REFRESH_INTERVAL_MS = 60000;
@@ -198,7 +197,7 @@
       </span>
     `;
     footer.querySelector('.ct-cg-bell-btn').addEventListener('click', () => {
-      try { window.open(CORE.NOTICE_BASE + _lang + '?utm_source=chatgpt_sidebar', '_blank'); } catch { /* */ }
+      try { window.open(CORE.NOTICE_BASE, '_blank'); } catch { /* */ }
       if (_notices.length > 0) {
         _lastSeenId = _notices[0].id;
         try { chrome.storage.local.set({ ct_last_seen_notice_id: _lastSeenId }); } catch { /* */ }
@@ -255,7 +254,7 @@
       container.querySelector('.ct-cg-notice-text').addEventListener('click', () => {
         let url = latest.url || '';
         try { const u = new URL(url); if (u.protocol !== 'http:' && u.protocol !== 'https:') url = ''; } catch { url = ''; }
-        if (!url) url = CORE.NOTICE_BASE + _lang;
+        if (!url) url = CORE.NOTICE_BASE;
         window.open(url + (url.includes('?') ? '&' : '?') + 'utm_source=chatgpt_sidebar', '_blank');
       });
       container.querySelector('.ct-cg-notice-close').addEventListener('click', (e) => {

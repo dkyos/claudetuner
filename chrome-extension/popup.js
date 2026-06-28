@@ -125,6 +125,10 @@ function updateThemeBtn(mode) {
 document.addEventListener('DOMContentLoaded', async () => {
   await initI18n();
   initPopupTheme();
+  // Dashboard links resolve from the configured server address (config.js).
+  document.querySelectorAll('[data-dashboard-link]').forEach((a) => {
+    a.href = CT_CONFIG.SITE_URL + '/dashboard';
+  });
   sendGAEvent('popup_open');
 
   // Request immediate local-only refresh if data is stale (>1 min)
@@ -147,7 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('recover-link').addEventListener('click', (e) => {
       e.preventDefault();
       chrome.storage.local.remove('account_deleted');
-      chrome.tabs.create({ url: 'https://claudetuner.com/dashboard/settings/' });
+      chrome.tabs.create({ url: CT_CONFIG.DEFAULT_SERVER_URL + '/dashboard' });
     });
     return;
   }
