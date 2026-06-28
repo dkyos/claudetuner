@@ -227,3 +227,86 @@ export function getProvidersForEmail(email: string): ProviderSummary[] {
     )
     .all(email) as unknown as ProviderSummary[];
 }
+
+// ── Long-range aggregates ───────────────────────────────────────────────────
+
+export interface DailyUsage {
+  date: string; // YYYY-MM-DD (UTC, from collected_at prefix)
+  five_hour_max: number | null;
+  seven_day_max: number | null;
+  count: number;
+}
+
+// Daily down-sample for long-range trend charts: per-UTC-day peak utilization.
+// substr(collected_at,1,10) avoids SQLite date() timezone surprises (collected_at
+// is ISO). Peak (MAX) per day is the meaningful signal for usage windows.
+export function getDailyUsage(
+  email: string,
+  days = 180,
+  provider?: string | null
+): DailyUsage[] {
+  const db = getDb();
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const clauses = ["user_email = ?", "collected_at >= ?"];
+  const args: (string | number)[] = [email, cutoff];
+  if (provider) {
+    clauses.push("provider = ?");
+    args.push(provider);
+  }
+  return db
+    .prepare(
+      `SELECT substr(collected_at, 1, 10) AS date,
+              MAX(five_hour_utilization) AS five_hour_max,
+              MAX(seven_day_utilization) AS seven_day_max,
+              COUNT(*) AS count
+       FROM snapshots
+       WHERE ${clauses.join(" AND ")}
+       GROUP BY substr(collected_at, 1, 10)
+       ORDER BY date ASC`
+    )
+    .all(...args) as unknown as DailyUsage[];
+}
+
+export interface WindowPeak {
+  resets_at: string;
+  peak: number | null;
+  count: number;
+}
+
+// Per reset-window peak utilization. Same resets_at = same window, so MAX(util)
+// over that group = how high that 5h/7d cycle reached. Drives "limit-reached
+// frequency" and long-range peak trend for plan recommendation.
+export function getWindowPeaks(
+  email: string,
+  windowKey: "five_hour" | "seven_day",
+  days = 180,
+  provider?: string | null
+): WindowPeak[] {
+  const db = getDb();
+  const utilCol =
+    windowKey === "five_hour"
+      ? "five_hour_utilization"
+      : "seven_day_utilization";
+  const resetCol =
+    windowKey === "five_hour" ? "five_hour_resets_at" : "seven_day_resets_at";
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  const clauses = [
+    "user_email = ?",
+    "collected_at >= ?",
+    `${resetCol} IS NOT NULL`,
+  ];
+  const args: (string | number)[] = [email, cutoff];
+  if (provider) {
+    clauses.push("provider = ?");
+    args.push(provider);
+  }
+  return db
+    .prepare(
+      `SELECT ${resetCol} AS resets_at, MAX(${utilCol}) AS peak, COUNT(*) AS count
+       FROM snapshots
+       WHERE ${clauses.join(" AND ")}
+       GROUP BY ${resetCol}
+       ORDER BY resets_at ASC`
+    )
+    .all(...args) as unknown as WindowPeak[];
+}

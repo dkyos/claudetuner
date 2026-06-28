@@ -22,7 +22,7 @@ export const CHATGPT_API_BASE = 'https://chatgpt.com';
 export const CHATGPT_SESSION_COOKIE = '__Secure-next-auth.session-token';
 export const GEMINI_API_BASE = 'https://gemini.google.com';
 export const HEARTBEAT_INTERVAL_MS = 1 * 60 * 60 * 1000; // 1 hour
-export const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days (for Enterprise spending monthly chart)
+export const HISTORY_MAX_AGE_MS = 180 * 24 * 60 * 60 * 1000; // 180 days (~6 months) for long-range usage trends
 
 export const PLAN_HIERARCHY = ['Pro', 'Max 5x', 'Max 20x'];
 

@@ -16,11 +16,13 @@ export function UsageChart({
   color,
   prediction,
   height = 200,
+  resetMarkers = [],
 }: {
   points: Pt[];
   color: string;
   prediction?: Pt | null;
   height?: number;
+  resetMarkers?: number[]; // epoch ms of reset-window boundaries (vertical lines)
 }) {
   const W = 680;
   const H = height;
@@ -81,6 +83,23 @@ export function UsageChart({
           </text>
         </g>
       ))}
+
+      {/* reset-window boundaries (vertical dashed) */}
+      {resetMarkers
+        .filter((t) => t > tMin && t < tMax)
+        .map((t, i) => (
+          <line
+            key={`rm-${i}`}
+            x1={x(t)}
+            y1={padT}
+            x2={x(t)}
+            y2={H - padB}
+            stroke="#f59e0b"
+            strokeWidth={1}
+            strokeDasharray="2 3"
+            opacity={0.35}
+          />
+        ))}
 
       {/* area + line */}
       <path d={areaPath} fill={color} opacity={0.13} />

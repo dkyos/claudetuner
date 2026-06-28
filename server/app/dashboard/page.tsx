@@ -7,8 +7,9 @@ import {
   getRecentSnapshots,
   getLatestSnapshot,
   getProvidersForEmail,
+  getDailyUsage,
 } from "@/lib/db";
-import { computeFitness } from "@/lib/plans";
+import { computeFitness, computePlanReview } from "@/lib/plans";
 import { predict7d } from "@/lib/predict";
 import { UsageChart, type Pt } from "./UsageChart";
 
@@ -72,7 +73,7 @@ const cardLabel: React.CSSProperties = {
 export default async function Dashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string; provider?: string }>;
+  searchParams: Promise<{ email?: string; provider?: string; period?: string }>;
 }) {
   const sp = await searchParams;
   const users = getUsers();
@@ -103,24 +104,61 @@ export default async function Dashboard({
     "claude";
   const isClaude = provider === "claude";
 
-  const history = getRecentSnapshots(email, 2000, { provider });
-  const latest = getLatestSnapshot(email, provider);
-  const fitness = isClaude
-    ? computeFitness(history, latest?.plan ?? null, now)
-    : null;
-  const pred = predict7d(
-    history,
-    latest?.seven_day_utilization ?? null,
-    latest?.seven_day_resets_at ?? null,
-    now
-  );
+  // Period: 7d/30d use raw snapshots (+ prediction + reset markers); 6mo uses a
+  // daily down-sample (peak/day) and hides prediction (predict7d needs detail).
+  const PERIODS: Record<string, number> = { "7d": 7, "30d": 30, "6mo": 180 };
+  const period = sp.period && PERIODS[sp.period] ? sp.period : "30d";
+  const days = PERIODS[period];
+  const isLong = days > 14;
+  const cutoff = now - days * 86400000;
 
-  const p5: Pt[] = history
-    .filter((h) => h.five_hour_utilization != null)
-    .map((h) => ({ t: Date.parse(h.collected_at), v: h.five_hour_utilization! }));
-  const p7: Pt[] = history
-    .filter((h) => h.seven_day_utilization != null)
-    .map((h) => ({ t: Date.parse(h.collected_at), v: h.seven_day_utilization! }));
+  const latest = getLatestSnapshot(email, provider);
+  // Recent raw (always) drives fitness/recommendation/latest state.
+  const recent = getRecentSnapshots(email, 6000, { provider });
+  const fitness = isClaude
+    ? computeFitness(recent, latest?.plan ?? null, now)
+    : null;
+  const review = isClaude
+    ? computePlanReview(recent, latest?.plan ?? null, now)
+    : null;
+
+  let p5: Pt[];
+  let p7: Pt[];
+  let resetMarkers: number[] = [];
+  let pred: ReturnType<typeof predict7d> = null;
+
+  if (isLong) {
+    const daily = getDailyUsage(email, days, provider);
+    p5 = daily
+      .filter((d) => d.five_hour_max != null)
+      .map((d) => ({ t: Date.parse(d.date + "T00:00:00Z"), v: d.five_hour_max! }));
+    p7 = daily
+      .filter((d) => d.seven_day_max != null)
+      .map((d) => ({ t: Date.parse(d.date + "T00:00:00Z"), v: d.seven_day_max! }));
+  } else {
+    const history = recent.filter((h) => Date.parse(h.collected_at) >= cutoff);
+    p5 = history
+      .filter((h) => h.five_hour_utilization != null)
+      .map((h) => ({ t: Date.parse(h.collected_at), v: h.five_hour_utilization! }));
+    p7 = history
+      .filter((h) => h.seven_day_utilization != null)
+      .map((h) => ({ t: Date.parse(h.collected_at), v: h.seven_day_utilization! }));
+    // reset markers = points where seven_day_resets_at changes (window boundary)
+    let prevR: string | null = null;
+    for (const h of history) {
+      const r = h.seven_day_resets_at;
+      if (r && r !== prevR) {
+        if (prevR !== null) resetMarkers.push(Date.parse(h.collected_at));
+        prevR = r;
+      }
+    }
+    pred = predict7d(
+      history,
+      latest?.seven_day_utilization ?? null,
+      latest?.seven_day_resets_at ?? null,
+      now
+    );
+  }
 
   const predPoint: Pt | null =
     pred && latest?.seven_day_resets_at
@@ -130,10 +168,10 @@ export default async function Dashboard({
         }
       : null;
 
-  const linkFor = (e: string, p?: string) =>
-    `/dashboard?email=${encodeURIComponent(e)}${
-      p ? `&provider=${encodeURIComponent(p)}` : ""
-    }`;
+  const linkFor = (e: string, p?: string, per?: string) =>
+    `/dashboard?email=${encodeURIComponent(e)}` +
+    `&provider=${encodeURIComponent(p ?? provider)}` +
+    `&period=${encodeURIComponent(per ?? period)}`;
 
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "32px 20px 64px" }}>
@@ -195,6 +233,28 @@ export default async function Dashboard({
         </div>
       )}
 
+      {/* period selector */}
+      <div style={{ margin: "8px 0 0", fontSize: 12 }}>
+        <span style={{ color: "#6b7280", marginRight: 8 }}>기간:</span>
+        {(["7d", "30d", "6mo"] as const).map((per) => (
+          <a
+            key={per}
+            href={linkFor(email, provider, per)}
+            style={{
+              marginRight: 10,
+              color: per === period ? "#22c55e" : "#6b7280",
+              textDecoration: "none",
+              fontWeight: per === period ? 700 : 400,
+            }}
+          >
+            {per === "7d" ? "7일" : per === "30d" ? "30일" : "6개월"}
+          </a>
+        ))}
+        {isLong && (
+          <span style={{ color: "#6b7280", marginLeft: 6 }}>· 일별 피크</span>
+        )}
+      </div>
+
       {/* summary cards */}
       <section
         style={{
@@ -251,6 +311,10 @@ export default async function Dashboard({
                   : `${(Math.round(pred.rate * 10) / 10).toFixed(1)}%/h 추세`}
               </div>
             </>
+          ) : isLong ? (
+            <div style={{ color: "#6b7280", fontSize: 13, paddingTop: 8 }}>
+              장기 뷰에선 예측을 표시하지 않습니다 — 기간을 7일로 바꾸면 확인할 수 있어요.
+            </div>
           ) : (
             <div style={{ color: "#6b7280", fontSize: 13, paddingTop: 8 }}>
               데이터 수집 중… (예측까지 2~3회 필요)
@@ -264,15 +328,87 @@ export default async function Dashboard({
         <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
           5시간 사용량 추세
         </div>
-        <UsageChart points={p5} color="#06b6d4" />
+        <UsageChart points={p5} color="#06b6d4" resetMarkers={resetMarkers} />
       </section>
 
       <section style={{ ...card, marginTop: 12 }}>
         <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
           7일 사용량 추세{predPoint ? " · 점선 = 리셋 시 예측" : ""}
         </div>
-        <UsageChart points={p7} color="#a78bfa" prediction={predPoint} />
+        <UsageChart points={p7} color="#a78bfa" prediction={predPoint} resetMarkers={resetMarkers} />
       </section>
+
+      {/* plan review (Claude only) */}
+      {isClaude && review && (
+        <section style={{ ...card, marginTop: 16 }}>
+          <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
+            요금제 리뷰
+          </div>
+          {(() => {
+            const V: Record<string, { label: string; color: string }> = {
+              keep: { label: "적정 (유지)", color: "#22c55e" },
+              upgrade: { label: "업그레이드 권장", color: "#f59e0b" },
+              downgrade: { label: "다운그레이드 가능", color: "#3b82f6" },
+            };
+            const v = V[review.verdict];
+            return (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginTop: 8,
+                    flexWrap: "wrap",
+                    fontSize: 13,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "#0b0d12",
+                      background: v.color,
+                      fontWeight: 700,
+                      fontSize: 12,
+                      padding: "3px 10px",
+                      borderRadius: 999,
+                    }}
+                  >
+                    {v.label}
+                  </span>
+                  <span style={{ color: "#9ca3af" }}>현재 {review.plan}</span>
+                  {review.recommended && (
+                    <span style={{ color: "#e5e7eb", fontWeight: 600 }}>
+                      → {review.recommended}
+                      {review.costDelta != null && (
+                        <span style={{ color: "#9ca3af", fontWeight: 400 }}>
+                          {" "}
+                          ({review.costDelta > 0 ? "+" : ""}${review.costDelta}/mo)
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
+                <ul
+                  style={{
+                    margin: "10px 0 0",
+                    paddingLeft: 18,
+                    color: "#9ca3af",
+                    fontSize: 12,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {review.reasons.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+                <div style={{ color: "#6b7280", fontSize: 11, marginTop: 8 }}>
+                  ※ 회사 업그레이드 요청 시 위 근거를 그대로 첨부할 수 있습니다.
+                </div>
+              </>
+            );
+          })()}
+        </section>
+      )}
 
       {/* plan fitness (Claude only) */}
       {isClaude && (
