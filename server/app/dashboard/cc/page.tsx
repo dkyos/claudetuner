@@ -136,6 +136,14 @@ export default async function CcPage({
       <p style={{ color: "#9ca3af", fontSize: 13, marginTop: 6 }}>
         ~/.claude/projects 기준 · 세션 {stats.sessions} · 내 요청 {totalUserTurns}개
       </p>
+      <div style={{ marginTop: 4 }}>
+        <a
+          href="/dashboard/cc/review"
+          style={{ color: "#c4b5fd", fontSize: 13, textDecoration: "none", fontWeight: 600 }}
+        >
+          🔍 Claude로 활용 리뷰·개선점 분석 →
+        </a>
+      </div>
 
       {stats.sessions === 0 ? (
         <div style={{ ...card, color: "#9ca3af", fontSize: 13, lineHeight: 1.7 }}>

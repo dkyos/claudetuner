@@ -1,7 +1,14 @@
 // Claude Code session — MY REQUESTS first. Each user turn is the primary content
 // ("요청 N"); Claude's response (assistant text + thinking + tools) is collapsed
 // into a one-line summary you expand on demand. Keeps focus on how I drive the work.
-import { getCcSession, getCcMessages, type CcMessageRow } from "@/lib/db";
+import {
+  getCcSession,
+  getCcMessages,
+  getCcReview,
+  type CcMessageRow,
+} from "@/lib/db";
+import { renderMarkdown } from "@/lib/md";
+import { ReviewButton } from "../ReviewButton";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -57,6 +64,7 @@ export default async function CcSessionDetail({
   }
 
   const avgLen = s.user_turns ? Math.round(s.user_chars / s.user_turns) : 0;
+  const sreview = getCcReview("session", sessionId);
 
   return (
     <main style={{ maxWidth: 860, margin: "0 auto", padding: "32px 20px 64px" }}>
@@ -78,6 +86,30 @@ export default async function CcSessionDetail({
         내 요청 <b>{s.user_turns}</b>개 · 평균 {avgLen}자 · 토큰{" "}
         {fmtTokens(s.input_tokens + s.output_tokens)}
       </div>
+
+      {/* 이 세션 개선점 (claude CLI 분석) */}
+      <section
+        style={{
+          background: "#11151d",
+          border: "1px solid #1f2530",
+          borderRadius: 12,
+          padding: "14px 16px",
+          marginBottom: 18,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ color: "#e5e7eb", fontSize: 13, fontWeight: 600 }}>
+            이 세션 개선점 (Claude 분석)
+          </div>
+          <ReviewButton scope="session" sessionId={sessionId} hasReport={!!sreview} />
+        </div>
+        {sreview && (
+          <article
+            style={{ marginTop: 10 }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(sreview.content) }}
+          />
+        )}
+      </section>
 
       {blocks.length === 0 ? (
         <p style={{ color: "#9ca3af", fontSize: 13 }}>내 요청이 없습니다.</p>
