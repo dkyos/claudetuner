@@ -233,6 +233,16 @@ export default async function Dashboard({
         </div>
       )}
 
+      {/* Claude Code analysis link */}
+      <div style={{ margin: "10px 0 0" }}>
+        <a
+          href="/dashboard/cc"
+          style={{ color: "#7dd3fc", fontSize: 13, textDecoration: "none" }}
+        >
+          🧑‍💻 Claude Code 사용 분석 보기 →
+        </a>
+      </div>
+
       {/* period selector */}
       <div style={{ margin: "8px 0 0", fontSize: 12 }}>
         <span style={{ color: "#6b7280", marginRight: 8 }}>기간:</span>

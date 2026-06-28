@@ -58,6 +58,45 @@ function init(): DatabaseSync {
   db.exec(
     "CREATE INDEX IF NOT EXISTS idx_snapshots_email_provider_collected ON snapshots(user_email, provider, collected_at);"
   );
+
+  // Claude Code (CLI) transcripts scanned from ~/.claude/projects.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS cc_sessions (
+      session_id TEXT PRIMARY KEY,
+      project TEXT,
+      cwd TEXT,
+      title TEXT,
+      git_branch TEXT,
+      cc_version TEXT,
+      started_at TEXT,
+      ended_at TEXT,
+      message_count INTEGER DEFAULT 0,
+      input_tokens INTEGER DEFAULT 0,
+      output_tokens INTEGER DEFAULT 0,
+      cache_tokens INTEGER DEFAULT 0,
+      source_path TEXT,
+      mtime_ms INTEGER,
+      synced_at TEXT
+    );
+  `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS cc_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      idx INTEGER,
+      role TEXT,
+      kind TEXT,
+      text TEXT,
+      tool_name TEXT,
+      created_at TEXT
+    );
+  `);
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_cc_sessions_started ON cc_sessions(started_at);"
+  );
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_cc_messages_session ON cc_messages(session_id, idx);"
+  );
   return db;
 }
 
@@ -309,4 +348,226 @@ export function getWindowPeaks(
        ORDER BY resets_at ASC`
     )
     .all(...args) as unknown as WindowPeak[];
+}
+
+// ── Claude Code (CLI) transcripts ───────────────────────────────────────────
+
+export interface CcMessageInput {
+  idx: number;
+  role: string | null;
+  kind: string | null;
+  text: string | null;
+  tool_name: string | null;
+  created_at: string | null;
+}
+export interface CcSessionInput {
+  session_id: string;
+  project: string | null;
+  cwd: string | null;
+  title: string | null;
+  git_branch: string | null;
+  cc_version: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  cache_tokens: number;
+  source_path: string;
+  mtime_ms: number;
+  messages: CcMessageInput[];
+}
+
+// session_id → mtime_ms, for incremental scan (skip unchanged files).
+export function getCcSessionMtimes(): Map<string, number> {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT session_id, mtime_ms FROM cc_sessions")
+    .all() as unknown as { session_id: string; mtime_ms: number }[];
+  return new Map(rows.map((r) => [r.session_id, r.mtime_ms]));
+}
+
+export function upsertCcSession(s: CcSessionInput): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO cc_sessions
+       (session_id, project, cwd, title, git_branch, cc_version, started_at, ended_at,
+        message_count, input_tokens, output_tokens, cache_tokens, source_path, mtime_ms, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(session_id) DO UPDATE SET
+       project=excluded.project, cwd=excluded.cwd, title=excluded.title,
+       git_branch=excluded.git_branch, cc_version=excluded.cc_version,
+       started_at=excluded.started_at, ended_at=excluded.ended_at,
+       message_count=excluded.message_count, input_tokens=excluded.input_tokens,
+       output_tokens=excluded.output_tokens, cache_tokens=excluded.cache_tokens,
+       source_path=excluded.source_path, mtime_ms=excluded.mtime_ms, synced_at=excluded.synced_at`
+  ).run(
+    s.session_id,
+    s.project,
+    s.cwd,
+    s.title,
+    s.git_branch,
+    s.cc_version,
+    s.started_at,
+    s.ended_at,
+    s.messages.length,
+    s.input_tokens,
+    s.output_tokens,
+    s.cache_tokens,
+    s.source_path,
+    s.mtime_ms,
+    new Date().toISOString()
+  );
+  db.prepare("DELETE FROM cc_messages WHERE session_id = ?").run(s.session_id);
+  const ins = db.prepare(
+    "INSERT INTO cc_messages (session_id, idx, role, kind, text, tool_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  );
+  for (const m of s.messages) {
+    ins.run(s.session_id, m.idx, m.role, m.kind, m.text, m.tool_name, m.created_at);
+  }
+}
+
+export interface CcSessionRow {
+  session_id: string;
+  project: string | null;
+  title: string | null;
+  git_branch: string | null;
+  cc_version: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  message_count: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_tokens: number;
+}
+
+export function getCcSessions(
+  opts: { project?: string | null; search?: string | null; limit?: number } = {}
+): CcSessionRow[] {
+  const db = getDb();
+  const clauses: string[] = [];
+  const args: (string | number)[] = [];
+  if (opts.project) {
+    clauses.push("project = ?");
+    args.push(opts.project);
+  }
+  if (opts.search) {
+    clauses.push("(title LIKE ? OR project LIKE ?)");
+    args.push(`%${opts.search}%`, `%${opts.search}%`);
+  }
+  args.push(opts.limit ?? 500);
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  return db
+    .prepare(
+      `SELECT session_id, project, title, git_branch, cc_version, started_at, ended_at,
+              message_count, input_tokens, output_tokens, cache_tokens
+       FROM cc_sessions ${where}
+       ORDER BY ended_at DESC
+       LIMIT ?`
+    )
+    .all(...args) as unknown as CcSessionRow[];
+}
+
+export function getCcSession(sessionId: string): CcSessionRow | null {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT session_id, project, title, git_branch, cc_version, started_at, ended_at,
+              message_count, input_tokens, output_tokens, cache_tokens
+       FROM cc_sessions WHERE session_id = ?`
+    )
+    .get(sessionId) as CcSessionRow | undefined;
+  return row ?? null;
+}
+
+export interface CcMessageRow {
+  idx: number;
+  role: string | null;
+  kind: string | null;
+  text: string | null;
+  tool_name: string | null;
+  created_at: string | null;
+}
+export function getCcMessages(sessionId: string): CcMessageRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT idx, role, kind, text, tool_name, created_at
+       FROM cc_messages WHERE session_id = ? ORDER BY idx ASC`
+    )
+    .all(sessionId) as unknown as CcMessageRow[];
+}
+
+export interface CcDayTokens {
+  date: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_tokens: number;
+  sessions: number;
+}
+// Per-day token totals (by session started_at) for the usage trend chart.
+export function getCcDailyTokens(days = 180): CcDayTokens[] {
+  const db = getDb();
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  return db
+    .prepare(
+      `SELECT substr(started_at, 1, 10) AS date,
+              SUM(input_tokens) AS input_tokens,
+              SUM(output_tokens) AS output_tokens,
+              SUM(cache_tokens) AS cache_tokens,
+              COUNT(*) AS sessions
+       FROM cc_sessions
+       WHERE started_at >= ?
+       GROUP BY substr(started_at, 1, 10)
+       ORDER BY date ASC`
+    )
+    .all(cutoff) as unknown as CcDayTokens[];
+}
+
+export interface CcProjectTokens {
+  project: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  cache_tokens: number;
+  sessions: number;
+  messages: number;
+}
+export function getCcProjectTokens(days = 180): CcProjectTokens[] {
+  const db = getDb();
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  return db
+    .prepare(
+      `SELECT project,
+              SUM(input_tokens) AS input_tokens,
+              SUM(output_tokens) AS output_tokens,
+              SUM(cache_tokens) AS cache_tokens,
+              COUNT(*) AS sessions,
+              SUM(message_count) AS messages
+       FROM cc_sessions
+       WHERE started_at >= ?
+       GROUP BY project
+       ORDER BY (SUM(input_tokens)+SUM(output_tokens)) DESC`
+    )
+    .all(cutoff) as unknown as CcProjectTokens[];
+}
+
+export interface CcStats {
+  sessions: number;
+  messages: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_tokens: number;
+}
+export function getCcStats(): CcStats {
+  const db = getDb();
+  const r = db
+    .prepare(
+      `SELECT COUNT(*) AS sessions,
+              COALESCE(SUM(message_count),0) AS messages,
+              COALESCE(SUM(input_tokens),0) AS input_tokens,
+              COALESCE(SUM(output_tokens),0) AS output_tokens,
+              COALESCE(SUM(cache_tokens),0) AS cache_tokens
+       FROM cc_sessions`
+    )
+    .get() as unknown as CcStats;
+  return r;
 }
