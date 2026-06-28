@@ -60,6 +60,15 @@ function init(): DatabaseSync {
   );
 
   // Claude Code (CLI) transcripts scanned from ~/.claude/projects.
+  // Migration: drop pre-user-metrics cc tables so they rebuild with the new
+  // schema (a full rescan repopulates everything from the local transcripts).
+  const ccCols = db
+    .prepare("SELECT name FROM pragma_table_info('cc_sessions')")
+    .all() as unknown as { name: string }[];
+  if (ccCols.length && !ccCols.some((c) => c.name === "user_turns")) {
+    db.exec("DROP TABLE IF EXISTS cc_messages");
+    db.exec("DROP TABLE IF EXISTS cc_sessions");
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS cc_sessions (
       session_id TEXT PRIMARY KEY,
@@ -74,6 +83,9 @@ function init(): DatabaseSync {
       input_tokens INTEGER DEFAULT 0,
       output_tokens INTEGER DEFAULT 0,
       cache_tokens INTEGER DEFAULT 0,
+      user_turns INTEGER DEFAULT 0,
+      user_chars INTEGER DEFAULT 0,
+      first_user_prompt TEXT,
       source_path TEXT,
       mtime_ms INTEGER,
       synced_at TEXT
@@ -372,6 +384,9 @@ export interface CcSessionInput {
   input_tokens: number;
   output_tokens: number;
   cache_tokens: number;
+  user_turns: number;
+  user_chars: number;
+  first_user_prompt: string | null;
   source_path: string;
   mtime_ms: number;
   messages: CcMessageInput[];
@@ -391,14 +406,17 @@ export function upsertCcSession(s: CcSessionInput): void {
   db.prepare(
     `INSERT INTO cc_sessions
        (session_id, project, cwd, title, git_branch, cc_version, started_at, ended_at,
-        message_count, input_tokens, output_tokens, cache_tokens, source_path, mtime_ms, synced_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        message_count, input_tokens, output_tokens, cache_tokens,
+        user_turns, user_chars, first_user_prompt, source_path, mtime_ms, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(session_id) DO UPDATE SET
        project=excluded.project, cwd=excluded.cwd, title=excluded.title,
        git_branch=excluded.git_branch, cc_version=excluded.cc_version,
        started_at=excluded.started_at, ended_at=excluded.ended_at,
        message_count=excluded.message_count, input_tokens=excluded.input_tokens,
        output_tokens=excluded.output_tokens, cache_tokens=excluded.cache_tokens,
+       user_turns=excluded.user_turns, user_chars=excluded.user_chars,
+       first_user_prompt=excluded.first_user_prompt,
        source_path=excluded.source_path, mtime_ms=excluded.mtime_ms, synced_at=excluded.synced_at`
   ).run(
     s.session_id,
@@ -413,6 +431,9 @@ export function upsertCcSession(s: CcSessionInput): void {
     s.input_tokens,
     s.output_tokens,
     s.cache_tokens,
+    s.user_turns,
+    s.user_chars,
+    s.first_user_prompt,
     s.source_path,
     s.mtime_ms,
     new Date().toISOString()
@@ -438,7 +459,14 @@ export interface CcSessionRow {
   input_tokens: number;
   output_tokens: number;
   cache_tokens: number;
+  user_turns: number;
+  user_chars: number;
+  first_user_prompt: string | null;
 }
+
+const CC_SESSION_COLS = `session_id, project, title, git_branch, cc_version, started_at, ended_at,
+              message_count, input_tokens, output_tokens, cache_tokens,
+              user_turns, user_chars, first_user_prompt`;
 
 export function getCcSessions(
   opts: { project?: string | null; search?: string | null; limit?: number } = {}
@@ -451,15 +479,14 @@ export function getCcSessions(
     args.push(opts.project);
   }
   if (opts.search) {
-    clauses.push("(title LIKE ? OR project LIKE ?)");
-    args.push(`%${opts.search}%`, `%${opts.search}%`);
+    clauses.push("(title LIKE ? OR project LIKE ? OR first_user_prompt LIKE ?)");
+    args.push(`%${opts.search}%`, `%${opts.search}%`, `%${opts.search}%`);
   }
   args.push(opts.limit ?? 500);
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   return db
     .prepare(
-      `SELECT session_id, project, title, git_branch, cc_version, started_at, ended_at,
-              message_count, input_tokens, output_tokens, cache_tokens
+      `SELECT ${CC_SESSION_COLS}
        FROM cc_sessions ${where}
        ORDER BY ended_at DESC
        LIMIT ?`
@@ -470,13 +497,63 @@ export function getCcSessions(
 export function getCcSession(sessionId: string): CcSessionRow | null {
   const db = getDb();
   const row = db
-    .prepare(
-      `SELECT session_id, project, title, git_branch, cc_version, started_at, ended_at,
-              message_count, input_tokens, output_tokens, cache_tokens
-       FROM cc_sessions WHERE session_id = ?`
-    )
+    .prepare(`SELECT ${CC_SESSION_COLS} FROM cc_sessions WHERE session_id = ?`)
     .get(sessionId) as CcSessionRow | undefined;
   return row ?? null;
+}
+
+// ── Usage-pattern aggregates ────────────────────────────────────────────────
+
+export interface ToolUsage {
+  tool_name: string;
+  uses: number;
+}
+// What I ask Claude Code to DO — tool_use frequency by tool name.
+export function getCcToolUsage(limit = 15): ToolUsage[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT COALESCE(tool_name, '(unknown)') AS tool_name, COUNT(*) AS uses
+       FROM cc_messages
+       WHERE kind = 'tool_use'
+       GROUP BY tool_name
+       ORDER BY uses DESC
+       LIMIT ?`
+    )
+    .all(limit) as unknown as ToolUsage[];
+}
+
+export interface HourActivity {
+  hour: number; // 0–23 (local? stored UTC ISO; use substr)
+  sessions: number;
+}
+// When I use Claude Code — session starts by UTC hour-of-day.
+export function getCcActivityByHour(): HourActivity[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT CAST(substr(started_at, 12, 2) AS INTEGER) AS hour, COUNT(*) AS sessions
+       FROM cc_sessions
+       WHERE started_at IS NOT NULL
+       GROUP BY hour
+       ORDER BY hour ASC`
+    )
+    .all() as unknown as HourActivity[];
+  return rows;
+}
+
+// My requests only (role=user, kind=text) for a session — the conversation view
+// makes these the primary content.
+export function getCcUserMessages(sessionId: string): CcMessageRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT idx, role, kind, text, tool_name, created_at
+       FROM cc_messages
+       WHERE session_id = ? AND role = 'user' AND kind = 'text'
+       ORDER BY idx ASC`
+    )
+    .all(sessionId) as unknown as CcMessageRow[];
 }
 
 export interface CcMessageRow {

@@ -66,6 +66,9 @@ export function parseTranscript(
     cacheTok = 0;
   const messages: CcMessageInput[] = [];
   let idx = 0;
+  let userTurns = 0;
+  let userChars = 0; // original length (pre-cap) of my (user) text requests
+  let firstUserPrompt: string | null = null;
 
   for (const line of raw.split("\n")) {
     if (!line.trim()) continue;
@@ -109,12 +112,26 @@ export function parseTranscript(
         created_at: o.timestamp || null,
       });
 
+    const noteUser = (t: string) => {
+      if (role === "user") {
+        userTurns++;
+        userChars += t.length; // pre-cap original length
+        if (firstUserPrompt == null) firstUserPrompt = t.slice(0, 200);
+      }
+    };
+
     if (typeof c === "string") {
-      if (c.trim()) push("text", cap(c), null);
+      if (c.trim()) {
+        noteUser(c);
+        push("text", cap(c), null);
+      }
     } else if (Array.isArray(c)) {
       for (const b of c) {
         if (!b || typeof b !== "object") continue;
-        if (b.type === "text" && b.text) push("text", cap(b.text), null);
+        if (b.type === "text" && b.text) {
+          noteUser(b.text);
+          push("text", cap(b.text), null);
+        }
         else if (b.type === "thinking")
           push("thinking", cap(b.thinking || b.text || ""), null);
         else if (b.type === "tool_use")
@@ -142,6 +159,9 @@ export function parseTranscript(
     input_tokens: inTok,
     output_tokens: outTok,
     cache_tokens: cacheTok,
+    user_turns: userTurns,
+    user_chars: userChars,
+    first_user_prompt: firstUserPrompt,
     source_path: filePath,
     mtime_ms: mtimeMs,
     messages,
