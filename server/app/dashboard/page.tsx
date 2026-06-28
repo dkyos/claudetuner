@@ -251,6 +251,113 @@ export default async function Dashboard({
         </div>
       )}
 
+      {/* plan review (Claude only) — surfaced at top */}
+      {isClaude && review && (
+        <section style={{ ...card, marginTop: 16 }}>
+          <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
+            요금제 리뷰
+          </div>
+          {(() => {
+            const V: Record<string, { label: string; color: string }> = {
+              keep: { label: "적정 (유지)", color: "#22c55e" },
+              upgrade: { label: "업그레이드 권장", color: "#f59e0b" },
+              downgrade: { label: "다운그레이드 가능", color: "#3b82f6" },
+            };
+            const v = V[review.verdict];
+            return (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginTop: 8,
+                    flexWrap: "wrap",
+                    fontSize: 13,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "#0b0d12",
+                      background: v.color,
+                      fontWeight: 700,
+                      fontSize: 12,
+                      padding: "3px 10px",
+                      borderRadius: 999,
+                    }}
+                  >
+                    {v.label}
+                  </span>
+                  <span style={{ color: "#9ca3af" }}>현재 {review.plan}</span>
+                  {review.recommended && (
+                    <span style={{ color: "#e5e7eb", fontWeight: 600 }}>
+                      → {review.recommended}
+                      {review.costDelta != null && (
+                        <span style={{ color: "#9ca3af", fontWeight: 400 }}>
+                          {" "}
+                          ({review.costDelta > 0 ? "+" : ""}${review.costDelta}/mo)
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
+                <ul
+                  style={{
+                    margin: "10px 0 0",
+                    paddingLeft: 18,
+                    color: "#9ca3af",
+                    fontSize: 12,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {review.reasons.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+                {(() => {
+                  const planCost = PLAN_MONTHLY[review.plan];
+                  if (!planCost || ccCost30 <= 0) return null;
+                  const roi = ccCost30 / planCost;
+                  const verdict =
+                    roi >= 1
+                      ? "구독료 이상으로 활용 중 — 유지·업그레이드 가치"
+                      : roi >= 0.3
+                        ? "구독료에 부합하는 활용"
+                        : "구독료 대비 여유 있음";
+                  const roiColor = roi >= 1 ? "#22c55e" : roi >= 0.3 ? "#f59e0b" : "#9ca3af";
+                  return (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: "8px 12px",
+                        background: "#0e1117",
+                        border: "1px solid #1f2530",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        color: "#cbd5e1",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      🧑‍💻 <b>Claude Code ROI</b> — 최근 30일{" "}
+                      <b style={{ color: "#22c55e" }}>{fmtUsd(ccCost30)}</b> 상당 사용 ={" "}
+                      {review.plan} ({COST[review.plan] ?? "—"})의{" "}
+                      <b style={{ color: roiColor }}>{roi.toFixed(1)}×</b>
+                      <span style={{ color: "#9ca3af" }}> · {verdict}</span>
+                      <div style={{ color: "#6b7280", fontSize: 11, marginTop: 4 }}>
+                        구독 토큰의 공개 API 단가 환산 — 5h/7d 한도 적합도와 함께 보세요.
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div style={{ color: "#6b7280", fontSize: 11, marginTop: 8 }}>
+                  ※ 회사 업그레이드 요청 시 위 근거를 그대로 첨부할 수 있습니다.
+                </div>
+              </>
+            );
+          })()}
+        </section>
+      )}
+
       {/* Claude Code analysis link */}
       <div style={{ margin: "10px 0 0" }}>
         <a
@@ -426,113 +533,6 @@ export default async function Dashboard({
         </div>
         <UsageChart points={p7} color="#a78bfa" prediction={predPoint} resetMarkers={resetMarkers} />
       </section>
-
-      {/* plan review (Claude only) */}
-      {isClaude && review && (
-        <section style={{ ...card, marginTop: 16 }}>
-          <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
-            요금제 리뷰
-          </div>
-          {(() => {
-            const V: Record<string, { label: string; color: string }> = {
-              keep: { label: "적정 (유지)", color: "#22c55e" },
-              upgrade: { label: "업그레이드 권장", color: "#f59e0b" },
-              downgrade: { label: "다운그레이드 가능", color: "#3b82f6" },
-            };
-            const v = V[review.verdict];
-            return (
-              <>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    marginTop: 8,
-                    flexWrap: "wrap",
-                    fontSize: 13,
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "#0b0d12",
-                      background: v.color,
-                      fontWeight: 700,
-                      fontSize: 12,
-                      padding: "3px 10px",
-                      borderRadius: 999,
-                    }}
-                  >
-                    {v.label}
-                  </span>
-                  <span style={{ color: "#9ca3af" }}>현재 {review.plan}</span>
-                  {review.recommended && (
-                    <span style={{ color: "#e5e7eb", fontWeight: 600 }}>
-                      → {review.recommended}
-                      {review.costDelta != null && (
-                        <span style={{ color: "#9ca3af", fontWeight: 400 }}>
-                          {" "}
-                          ({review.costDelta > 0 ? "+" : ""}${review.costDelta}/mo)
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </div>
-                <ul
-                  style={{
-                    margin: "10px 0 0",
-                    paddingLeft: 18,
-                    color: "#9ca3af",
-                    fontSize: 12,
-                    lineHeight: 1.7,
-                  }}
-                >
-                  {review.reasons.map((r, i) => (
-                    <li key={i}>{r}</li>
-                  ))}
-                </ul>
-                {(() => {
-                  const planCost = PLAN_MONTHLY[review.plan];
-                  if (!planCost || ccCost30 <= 0) return null;
-                  const roi = ccCost30 / planCost;
-                  const verdict =
-                    roi >= 1
-                      ? "구독료 이상으로 활용 중 — 유지·업그레이드 가치"
-                      : roi >= 0.3
-                        ? "구독료에 부합하는 활용"
-                        : "구독료 대비 여유 있음";
-                  const roiColor = roi >= 1 ? "#22c55e" : roi >= 0.3 ? "#f59e0b" : "#9ca3af";
-                  return (
-                    <div
-                      style={{
-                        marginTop: 10,
-                        padding: "8px 12px",
-                        background: "#0e1117",
-                        border: "1px solid #1f2530",
-                        borderRadius: 8,
-                        fontSize: 12,
-                        color: "#cbd5e1",
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      🧑‍💻 <b>Claude Code ROI</b> — 최근 30일{" "}
-                      <b style={{ color: "#22c55e" }}>{fmtUsd(ccCost30)}</b> 상당 사용 ={" "}
-                      {review.plan} ({COST[review.plan] ?? "—"})의{" "}
-                      <b style={{ color: roiColor }}>{roi.toFixed(1)}×</b>
-                      <span style={{ color: "#9ca3af" }}> · {verdict}</span>
-                      <div style={{ color: "#6b7280", fontSize: 11, marginTop: 4 }}>
-                        구독 토큰의 공개 API 단가 환산 — 한도 적합도(위)와 함께 보세요.
-                      </div>
-                    </div>
-                  );
-                })()}
-                <div style={{ color: "#6b7280", fontSize: 11, marginTop: 8 }}>
-                  ※ 회사 업그레이드 요청 시 위 근거를 그대로 첨부할 수 있습니다.
-                </div>
-              </>
-            );
-          })()}
-        </section>
-      )}
 
       {/* plan fitness (Claude only) */}
       {isClaude && (
