@@ -63,7 +63,14 @@ export function parseTranscript(
   let lastTs: string | null = null;
   let inTok = 0,
     outTok = 0,
-    cacheTok = 0;
+    cacheTok = 0,
+    cacheCreateTok = 0,
+    cacheReadTok = 0;
+  // per-model token tally for cost estimation: model -> {i,o,cw,cr}
+  const modelTok: Record<
+    string,
+    { i: number; o: number; cw: number; cr: number }
+  > = {};
   const messages: CcMessageInput[] = [];
   let idx = 0;
   let userTurns = 0;
@@ -94,11 +101,21 @@ export function parseTranscript(
     const role: string = m.role || o.type;
 
     if (o.type === "assistant" && m.usage) {
-      inTok += m.usage.input_tokens || 0;
-      outTok += m.usage.output_tokens || 0;
-      cacheTok +=
-        (m.usage.cache_creation_input_tokens || 0) +
-        (m.usage.cache_read_input_tokens || 0);
+      const i = m.usage.input_tokens || 0;
+      const ou = m.usage.output_tokens || 0;
+      const cw = m.usage.cache_creation_input_tokens || 0;
+      const cr = m.usage.cache_read_input_tokens || 0;
+      inTok += i;
+      outTok += ou;
+      cacheCreateTok += cw;
+      cacheReadTok += cr;
+      cacheTok += cw + cr;
+      const model = m.model || ccVersion || "unknown";
+      const mt = (modelTok[model] ||= { i: 0, o: 0, cw: 0, cr: 0 });
+      mt.i += i;
+      mt.o += ou;
+      mt.cw += cw;
+      mt.cr += cr;
     }
 
     const c = m.content;
@@ -159,6 +176,9 @@ export function parseTranscript(
     input_tokens: inTok,
     output_tokens: outTok,
     cache_tokens: cacheTok,
+    cache_creation_tokens: cacheCreateTok,
+    cache_read_tokens: cacheReadTok,
+    model_tokens: JSON.stringify(modelTok),
     user_turns: userTurns,
     user_chars: userChars,
     first_user_prompt: firstUserPrompt,

@@ -8,9 +8,12 @@ import {
   getLatestSnapshot,
   getProvidersForEmail,
   getDailyUsage,
+  getCcCostSummary,
+  getCcDailyCost,
 } from "@/lib/db";
 import { computeFitness, computePlanReview } from "@/lib/plans";
 import { predict7d } from "@/lib/predict";
+import { fmtUsd } from "@/lib/cost";
 import { UsageChart, type Pt } from "./UsageChart";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +59,47 @@ function fmtResetIn(resetsAt: string | null, now: number): string {
 function fmtDateTime(t: number): string {
   const d = new Date(t);
   return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}시`;
+}
+function fmtTokens(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return Math.round(n / 1000) + "K";
+  return String(n);
+}
+
+// Daily cost bars (SVG) for the Claude Code token-cost trend.
+function CostBars({ daily }: { daily: { date: string; usd: number }[] }) {
+  const W = 900,
+    H = 90,
+    padB = 14;
+  if (!daily.length)
+    return <div style={{ color: "#6b7280", fontSize: 13 }}>데이터 없음</div>;
+  const max = Math.max(...daily.map((d) => d.usd), 0.0001);
+  const bw = W / daily.length;
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      style={{ display: "block", marginTop: 8 }}
+      role="img"
+    >
+      {daily.map((d, i) => {
+        const h = ((H - padB) * d.usd) / max;
+        return (
+          <rect
+            key={i}
+            x={i * bw + bw * 0.12}
+            y={H - padB - h}
+            width={bw * 0.76}
+            height={Math.max(h, d.usd > 0 ? 1 : 0)}
+            fill="#22c55e"
+            opacity={0.8}
+          >
+            <title>{`${d.date}: ${fmtUsd(d.usd)}`}</title>
+          </rect>
+        );
+      })}
+    </svg>
+  );
 }
 
 const card: React.CSSProperties = {
@@ -168,6 +212,11 @@ export default async function Dashboard({
         }
       : null;
 
+  // Claude Code local token usage + cost (API-equivalent estimate). Provider-
+  // independent — comes from ~/.claude transcripts, not snapshots.
+  const ccCost = getCcCostSummary();
+  const ccDaily = getCcDailyCost(days);
+
   const linkFor = (e: string, p?: string, per?: string) =>
     `/dashboard?email=${encodeURIComponent(e)}` +
     `&provider=${encodeURIComponent(p ?? provider)}` +
@@ -242,6 +291,67 @@ export default async function Dashboard({
           🧑‍💻 Claude Code 사용 분석 보기 →
         </a>
       </div>
+
+      {/* Claude Code token usage + cost trend (local transcripts, API-equiv) */}
+      {ccCost.total_tokens > 0 && (
+        <section style={{ ...card, marginTop: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              flexWrap: "wrap",
+              gap: 8,
+            }}
+          >
+            <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600, margin: 0 }}>
+              🧑‍💻 Claude Code 토큰·비용 (API 환산 추정)
+            </div>
+            <a
+              href="/dashboard/cc"
+              style={{ color: "#7dd3fc", fontSize: 12, textDecoration: "none" }}
+            >
+              상세 →
+            </a>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 24,
+              marginTop: 10,
+              flexWrap: "wrap",
+              alignItems: "baseline",
+            }}
+          >
+            <div>
+              <span style={{ fontSize: 26, fontWeight: 700, color: "#22c55e" }}>
+                {fmtUsd(ccCost.total_usd)}
+              </span>
+              <span style={{ color: "#6b7280", fontSize: 11, marginLeft: 6 }}>
+                누적 추정
+              </span>
+            </div>
+            <div style={{ color: "#9ca3af", fontSize: 13 }}>
+              총 토큰 <b style={{ color: "#e5e7eb" }}>{fmtTokens(ccCost.total_tokens)}</b>
+            </div>
+            <div style={{ color: "#9ca3af", fontSize: 12 }}>
+              {ccCost.by_model.slice(0, 3).map((m, i) => (
+                <span key={m.model} style={{ marginLeft: i ? 10 : 0 }}>
+                  {m.model.replace(/^claude-/, "").replace(/\[.*\]$/, "")}{" "}
+                  <span style={{ color: "#22c55e" }}>{fmtUsd(m.usd)}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+          <div style={{ ...cardLabel, marginTop: 12, marginBottom: 0 }}>
+            일별 비용 ({period === "7d" ? "7일" : period === "30d" ? "30일" : "6개월"})
+          </div>
+          <CostBars daily={ccDaily} />
+          <div style={{ color: "#6b7280", fontSize: 11, marginTop: 6 }}>
+            ※ 구독 사용분의 공개 API 단가 환산 추정치입니다 — 실제 청구 금액이 아닙니다.
+          </div>
+        </section>
+      )}
 
       {/* period selector */}
       <div style={{ margin: "8px 0 0", fontSize: 12 }}>

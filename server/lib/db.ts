@@ -3,6 +3,7 @@
 // globalThis so Next.js dev HMR doesn't reopen it on every module re-eval.
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
+import { costOfModelTokens, parseModelTokens } from "./cost";
 
 const DB_PATH = path.join(process.cwd(), "data.sqlite");
 
@@ -65,7 +66,9 @@ function init(): DatabaseSync {
   const ccCols = db
     .prepare("SELECT name FROM pragma_table_info('cc_sessions')")
     .all() as unknown as { name: string }[];
-  if (ccCols.length && !ccCols.some((c) => c.name === "user_turns")) {
+  // Rebuild when the newest columns are missing (model_tokens added latest);
+  // a full rescan repopulates everything from the local transcripts.
+  if (ccCols.length && !ccCols.some((c) => c.name === "model_tokens")) {
     db.exec("DROP TABLE IF EXISTS cc_messages");
     db.exec("DROP TABLE IF EXISTS cc_sessions");
   }
@@ -83,6 +86,9 @@ function init(): DatabaseSync {
       input_tokens INTEGER DEFAULT 0,
       output_tokens INTEGER DEFAULT 0,
       cache_tokens INTEGER DEFAULT 0,
+      cache_creation_tokens INTEGER DEFAULT 0,
+      cache_read_tokens INTEGER DEFAULT 0,
+      model_tokens TEXT,
       user_turns INTEGER DEFAULT 0,
       user_chars INTEGER DEFAULT 0,
       first_user_prompt TEXT,
@@ -395,6 +401,9 @@ export interface CcSessionInput {
   input_tokens: number;
   output_tokens: number;
   cache_tokens: number;
+  cache_creation_tokens: number;
+  cache_read_tokens: number;
+  model_tokens: string | null;
   user_turns: number;
   user_chars: number;
   first_user_prompt: string | null;
@@ -418,14 +427,17 @@ export function upsertCcSession(s: CcSessionInput): void {
     `INSERT INTO cc_sessions
        (session_id, project, cwd, title, git_branch, cc_version, started_at, ended_at,
         message_count, input_tokens, output_tokens, cache_tokens,
+        cache_creation_tokens, cache_read_tokens, model_tokens,
         user_turns, user_chars, first_user_prompt, source_path, mtime_ms, synced_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(session_id) DO UPDATE SET
        project=excluded.project, cwd=excluded.cwd, title=excluded.title,
        git_branch=excluded.git_branch, cc_version=excluded.cc_version,
        started_at=excluded.started_at, ended_at=excluded.ended_at,
        message_count=excluded.message_count, input_tokens=excluded.input_tokens,
        output_tokens=excluded.output_tokens, cache_tokens=excluded.cache_tokens,
+       cache_creation_tokens=excluded.cache_creation_tokens,
+       cache_read_tokens=excluded.cache_read_tokens, model_tokens=excluded.model_tokens,
        user_turns=excluded.user_turns, user_chars=excluded.user_chars,
        first_user_prompt=excluded.first_user_prompt,
        source_path=excluded.source_path, mtime_ms=excluded.mtime_ms, synced_at=excluded.synced_at`
@@ -442,6 +454,9 @@ export function upsertCcSession(s: CcSessionInput): void {
     s.input_tokens,
     s.output_tokens,
     s.cache_tokens,
+    s.cache_creation_tokens,
+    s.cache_read_tokens,
+    s.model_tokens,
     s.user_turns,
     s.user_chars,
     s.first_user_prompt,
@@ -658,6 +673,79 @@ export function getCcStats(): CcStats {
     )
     .get() as unknown as CcStats;
   return r;
+}
+
+// ── Cost estimation (ccusage-style) ─────────────────────────────────────────
+
+export interface CostSummary {
+  total_usd: number;
+  total_tokens: number;
+  by_model: { model: string; tokens: number; usd: number }[];
+}
+
+// Aggregate per-model tokens across all sessions → "would-be" API cost.
+export function getCcCostSummary(): CostSummary {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      "SELECT model_tokens FROM cc_sessions WHERE model_tokens IS NOT NULL"
+    )
+    .all() as unknown as { model_tokens: string }[];
+  const agg: Record<string, { i: number; o: number; cw: number; cr: number }> = {};
+  for (const r of rows) {
+    const mt = parseModelTokens(r.model_tokens);
+    for (const [model, t] of Object.entries(mt)) {
+      const a = (agg[model] ||= { i: 0, o: 0, cw: 0, cr: 0 });
+      a.i += t.i || 0;
+      a.o += t.o || 0;
+      a.cw += t.cw || 0;
+      a.cr += t.cr || 0;
+    }
+  }
+  let total = 0;
+  let totalTokens = 0;
+  const by_model = Object.entries(agg).map(([model, t]) => {
+    const usd = costOfModelTokens(JSON.stringify({ [model]: t }));
+    const tokens = t.i + t.o + t.cw + t.cr;
+    total += usd;
+    totalTokens += tokens;
+    return { model, tokens, usd };
+  });
+  by_model.sort((a, b) => b.usd - a.usd);
+  return { total_usd: total, total_tokens: totalTokens, by_model };
+}
+
+export interface DayCost {
+  date: string;
+  usd: number;
+  tokens: number;
+}
+
+// Daily cost trend over the last N days (by session start date, UTC).
+export function getCcDailyCost(days = 180): DayCost[] {
+  const db = getDb();
+  const cutoff = new Date(Date.now() - days * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  const rows = db
+    .prepare(
+      `SELECT substr(started_at, 1, 10) AS date, model_tokens
+       FROM cc_sessions
+       WHERE started_at IS NOT NULL AND model_tokens IS NOT NULL
+         AND substr(started_at, 1, 10) >= ?`
+    )
+    .all(cutoff) as unknown as { date: string; model_tokens: string }[];
+  const byDate: Record<string, { usd: number; tokens: number }> = {};
+  for (const r of rows) {
+    const d = (byDate[r.date] ||= { usd: 0, tokens: 0 });
+    d.usd += costOfModelTokens(r.model_tokens);
+    for (const t of Object.values(parseModelTokens(r.model_tokens))) {
+      d.tokens += (t.i || 0) + (t.o || 0) + (t.cw || 0) + (t.cr || 0);
+    }
+  }
+  return Object.entries(byDate)
+    .map(([date, v]) => ({ date, usd: v.usd, tokens: v.tokens }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // ── CC review reports (claude CLI output) ───────────────────────────────────
