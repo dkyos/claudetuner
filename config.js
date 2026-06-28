@@ -4,5 +4,5 @@
 const CT_CONFIG = {
   DEFAULT_SERVER_URL: 'http://localhost:3000',
   DEFAULT_API_KEY: 'claude-manager-dev-key-2024',
-  SITE_URL: 'https://claudetuner.com',
+  SITE_URL: 'http://localhost:3000'
 };
