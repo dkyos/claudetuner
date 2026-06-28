@@ -9,6 +9,7 @@ import {
 } from "@/lib/db";
 import { renderMarkdown } from "@/lib/md";
 import { ReviewButton } from "../ReviewButton";
+import { Breadcrumb } from "../../Breadcrumb";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,9 +42,13 @@ export default async function CcSessionDetail({
   if (!s) {
     return (
       <main style={{ maxWidth: 860, margin: "0 auto", padding: "40px 20px" }}>
-        <a href="/dashboard/cc" style={{ color: "#6b7280", fontSize: 13 }}>
-          ← Claude Code
-        </a>
+        <Breadcrumb
+          items={[
+            { label: "대시보드", href: "/dashboard" },
+            { label: "Claude Code 분석", href: "/dashboard/cc" },
+            { label: "세션" },
+          ]}
+        />
         <p style={{ color: "#9ca3af", marginTop: 16 }}>세션을 찾을 수 없습니다.</p>
       </main>
     );
@@ -68,12 +73,13 @@ export default async function CcSessionDetail({
 
   return (
     <main style={{ maxWidth: 860, margin: "0 auto", padding: "32px 20px 64px" }}>
-      <a
-        href="/dashboard/cc"
-        style={{ color: "#6b7280", fontSize: 13, textDecoration: "none" }}
-      >
-        ← Claude Code
-      </a>
+      <Breadcrumb
+        items={[
+          { label: "대시보드", href: "/dashboard" },
+          { label: "Claude Code 분석", href: "/dashboard/cc" },
+          { label: s.title || "세션" },
+        ]}
+      />
       <h1 style={{ fontSize: 20, margin: "10px 0 4px" }}>
         {s.title || "(제목 없음)"}
       </h1>

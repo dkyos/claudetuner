@@ -9,6 +9,7 @@ import {
   getCcActivityByHour,
 } from "@/lib/db";
 import { scanCcTranscripts } from "@/lib/cc-scan";
+import { Breadcrumb } from "../Breadcrumb";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -127,12 +128,13 @@ export default async function CcPage({
 
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "32px 20px 64px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
-        <h1 style={{ fontSize: 22, margin: 0 }}>Claude Code 활용 분석</h1>
-        <a href="/dashboard" style={{ color: "#6b7280", fontSize: 13, textDecoration: "none" }}>
-          ← 사용량 대시보드
-        </a>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "대시보드", href: "/dashboard" },
+          { label: "Claude Code 분석" },
+        ]}
+      />
+      <h1 style={{ fontSize: 22, margin: 0 }}>Claude Code 활용 분석</h1>
       <p style={{ color: "#9ca3af", fontSize: 13, marginTop: 6 }}>
         ~/.claude/projects 기준 · 세션 {stats.sessions} · 내 요청 {totalUserTurns}개
       </p>

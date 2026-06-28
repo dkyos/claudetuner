@@ -3,6 +3,7 @@
 import { getCcReview, getCcStats } from "@/lib/db";
 import { renderMarkdown } from "@/lib/md";
 import { ReviewButton } from "../ReviewButton";
+import { Breadcrumb } from "../../Breadcrumb";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,12 +21,14 @@ export default function CcReviewPage() {
 
   return (
     <main style={{ maxWidth: 820, margin: "0 auto", padding: "32px 20px 64px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
-        <h1 style={{ fontSize: 22, margin: 0 }}>Claude Code 활용 리뷰</h1>
-        <a href="/dashboard/cc" style={{ color: "#6b7280", fontSize: 13, textDecoration: "none" }}>
-          ← 활용 분석
-        </a>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "대시보드", href: "/dashboard" },
+          { label: "Claude Code 분석", href: "/dashboard/cc" },
+          { label: "활용 리뷰" },
+        ]}
+      />
+      <h1 style={{ fontSize: 22, margin: 0 }}>Claude Code 활용 리뷰</h1>
       <p style={{ color: "#9ca3af", fontSize: 13, marginTop: 6 }}>
         로컬 <code>claude</code> CLI(구독)로 내 요청을 분석해 개선점을 도출합니다 — API key 불필요.
       </p>
