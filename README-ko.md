@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icons/icon128.png" alt="Claude Tuner" width="80" />
+  <img src="chrome-extension/icons/icon128.png" alt="Claude Tuner" width="80" />
 </p>
 
 <h1 align="center">Claude Tuner</h1>
@@ -9,15 +9,14 @@
 </p>
 
 <p align="center">
-  <a href="https://chromewebstore.google.com/detail/claude-tuner/ajnnckikagphjbgpicpoffockabnhond"><img src="https://img.shields.io/badge/Chrome_Web_Store-설치-4285F4?logo=googlechrome&logoColor=white" alt="Chrome Web Store" /></a>
-  <a href="https://claudetuner.com/dashboard/?demo=true"><img src="https://img.shields.io/badge/라이브_데모-대시보드-FF6B35" alt="라이브 데모" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/chaehyun2/claudetuner" alt="License" /></a>
   <a href="README.md"><img src="https://img.shields.io/badge/lang-English-blue" alt="English" /></a>
 </p>
 
-<p align="center">
-  전 세계 수천 명의 Claude Pro, Max, Team, Enterprise 사용자가 이용 중입니다.
-</p>
+> **개인용 로컬 서버 포크.** 이 포크는 클라우드(`api.claudetuner.com`) 대신 저장소에 포함된 로컬
+> 백엔드 [`server/`](server/)(`http://localhost:3000`)로 동작하며, **Claude Code(CLI) 사용 분석**을
+> 추가했습니다. 아래에 언급되는 클라우드 전용 항목(Chrome Web Store, 라이브 데모, 호스팅 팀
+> 대시보드)은 원본(upstream) 프로젝트의 기능입니다.
 
 ---
 
@@ -55,6 +54,7 @@ Claude의 사용량 한도는 불투명합니다 — 얼마나 썼는지, 언제
 - 6단계 속도 표시기 (safe → critical)
 - 스파크라인 차트로 추세 확인
 - 멀티 조직 지원 (자동 감지 또는 고정)
+- 6개월(180일) 로컬 사용 히스토리
 </details>
 
 <details open>
@@ -83,6 +83,15 @@ Claude의 사용량 한도는 불투명합니다 — 얼마나 썼는지, 언제
 - 현재 구독의 적합도 한눈에 확인
 - Claude Tuner 사용자 중 백분위 순위
 - 사용량 분포 히스토그램
+</details>
+
+<details open>
+<summary><b>Claude Code 사용 분석</b> — 이 포크</summary>
+
+- `~/.claude/projects` transcript 로컬 스캔 (업로드 없음)
+- 프로젝트별 / 세션별 분석 + 내 요청 중심 대화 뷰
+- 토큰·비용 추정 (ccusage 방식: Opus / Sonnet / Haiku, cache write/read 분리)
+- 사용 리뷰: 로컬 서버가 `claude` CLI(구독, API key 불필요)를 호출해 개선점 도출
 </details>
 
 <details>
@@ -134,67 +143,70 @@ git clone https://github.com/chaehyun2/claudetuner.git
 
 1. `chrome://extensions/` 열기
 2. **개발자 모드** 활성화
-3. **압축해제된 확장 프로그램을 로드합니다** 클릭 후 클론한 폴더 선택
+3. **압축해제된 확장 프로그램을 로드합니다** 클릭 후 **`chrome-extension/`** 폴더 선택
 
 ## 작동 방식
 
 ```
-사용자 ──→ Claude.ai ──→ Claude Tuner 확장 ──→ Claude Tuner API 서버
-                          (사용량 데이터 읽기)    (히스토리 저장 & 분석)
+사용자 ──→ Claude.ai ──→ Claude Tuner 확장 ──→ 로컬 서버 (server/)
+                          (사용량 데이터 읽기)    localhost:3000 (히스토리 & 분석)
                                 │
                                 ▼
-                          확장 팝업              웹 대시보드
-                        (게이지 & 알림)     (차트, 팀, 인사이트)
+                          확장 팝업              로컬 대시보드
+                        (게이지 & 알림)     (추세, 요금제 리뷰, Claude Code 분석)
 ```
 
 1. **수집** — 확장이 Claude.ai에서 사용량 데이터를 읽습니다 (대화 내용은 절대 수집하지 않음)
-2. **분석** — 스냅샷을 API 서버로 전송, 히스토리 저장 및 분석 수행
-3. **표시** — 팝업에서 실시간 게이지를 보거나, [웹 대시보드](https://claudetuner.com/dashboard)에서 상세 분석
+2. **분석** — 스냅샷을 로컬 서버(`server/`)로 전송, 히스토리 저장 및 분석 수행
+3. **표시** — 팝업에서 실시간 게이지를 보거나, [로컬 대시보드](http://localhost:3000/dashboard)에서 상세 분석 (먼저 `server/` 실행)
 
 ## 셀프 호스팅
 
-`config.js`를 수정하여 자체 서버를 사용할 수 있습니다:
+이 포크는 이미 `http://localhost:3000`을 사용합니다. 포함된 서버를 실행하세요:
+
+```bash
+cd server && npm install && npm run dev
+```
+
+다른 호스트를 쓰려면 `chrome-extension/config.js`를 수정하세요(`chrome-extension/bg/constants.js`도 함께):
 
 ```js
 const CT_CONFIG = {
-  DEFAULT_SERVER_URL: 'https://your-server.example.com',
+  DEFAULT_SERVER_URL: 'http://localhost:3000',
   DEFAULT_API_KEY: 'your-api-key',
-  SITE_URL: 'https://your-dashboard.example.com',
+  SITE_URL: 'http://localhost:3000',
 };
 ```
 
-서버 API 명세는 [API.md](API.md)를 참조하세요.
+서버 API 명세는 [docs/API.md](docs/API.md)를 참조하세요.
 
 ## 개인정보 보호
 
 - 대화 내용은 **절대 수집하지 않습니다** — 메시지, 파일, 프롬프트 없음
 - 사용률, 리셋 시각, 플랜 정보, 조직 멤버십만 수집
-- 셀프 서비스 계정 삭제 가능
-- 개인정보처리방침: [claudetuner.com/privacy](https://claudetuner.com/privacy/)
+- 이 포크에서는 모든 데이터가 내 컴퓨터에만 저장됩니다 — 로컬 서버(`server/data.sqlite`)와 브라우저 저장소. 저장을 위해 외부 서비스를 호출하지 않습니다.
 
 <details>
 <summary><b>아키텍처</b></summary>
 
 ```
-popup.html/js          팝업 UI (사용량 게이지, 차트, 추천)
-options.html/js        설정 페이지 (주기, 알림, 조직 선택)
-background.js          Service worker (알람 스케줄링, 메시지 라우팅)
+chrome-extension/      MV3 확장 — chrome://extensions 에서 이 폴더를 로드
+  popup.html/js        팝업 UI (사용량 게이지, 차트, 추천)
+  options.html/js      설정 페이지 (주기, 알림, 조직 선택)
+  background.js        Service worker (알람 스케줄링, 메시지 라우팅)
   bg/collect.js        메인 수집 엔진 (Claude.ai API -> 서버)
   bg/plan.js           플랜 감지, 변경 실행, 추천
   bg/api.js            Claude.ai API 래퍼 (듀얼 인증 fallback)
   bg/storage.js        Chrome storage 헬퍼
-  bg/constants.js      설정 상수
-  bg/badge.js          툴바 배지 업데이트
-  bg/notifications.js  사용량 알림, 리셋 알림
-  bg/analytics.js      GA4 이벤트 트래킹
-config.js              중앙 설정 (서버 URL, API 키)
-content.js             Content script (메시지 중계)
-page-script.js         Claude.ai에 주입 (페이지 인증으로 fetch)
-i18n.js                다국어 헬퍼
-_locales/              영어 및 한국어 번역
+  bg/constants.js      설정 상수 (서버 URL, 180일 보존)
+  config.js / i18n.js  중앙 설정 + 다국어
+  page-script.js       Claude.ai에 주입 (페이지 인증으로 fetch)
+  _locales/            영어 및 한국어 번역
+server/                로컬 Next.js 백엔드 — API, 대시보드, Claude Code 분석
+docs/                  docs/API.md (서버 명세) + 스크린샷
 ```
 
-**빌드 스텝 없음** — 이 저장소의 소스 파일은 Chrome Web Store에 게시된 것과 동일합니다.
+**빌드 스텝 없음** — 확장 파일은 번들러/트랜스파일 없는 순수 JS/HTML/CSS입니다.
 
 </details>
 

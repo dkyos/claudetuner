@@ -15,8 +15,9 @@ extension points at `http://localhost:3000`.
 ## Commands
 
 ### Extension — no build step
-Vanilla JS, no bundler/transpile. The files in the repo root ARE the extension.
-- Load: `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select the repo root.
+Vanilla JS, no bundler/transpile. The extension lives in **`chrome-extension/`** (manifest.json + all
+JS/HTML/CSS + `bg/` `ui/` `icons/` `_locales/`). Paths below are relative to that directory.
+- Load: `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select **`chrome-extension/`**.
 - After editing extension files: **Reload** the extension from `chrome://extensions`.
 - Test both `en` and `ko` locales; user-facing strings live in `i18n.js` AND `_locales/{en,ko}/messages.json`.
 
@@ -55,9 +56,10 @@ The popup dashboard draws from local data — the server only supplies the plan-
 announcements/promos, both of which fail silently if absent.
 
 ### Config — keep two files in sync
-- `config.js` defines global `CT_CONFIG` (a classic script used by content scripts + popup).
-- `bg/constants.js` exports the same constants as an ES module (for the service worker).
-- Both declare `DEFAULT_SERVER_URL` / `DEFAULT_API_KEY` — **change them together**.
+- `chrome-extension/config.js` defines global `CT_CONFIG` (classic script for content scripts + popup).
+- `chrome-extension/bg/constants.js` exports the same constants as an ES module (service worker).
+- Both declare `DEFAULT_SERVER_URL` / `DEFAULT_API_KEY` — **change them together**. They also set
+  `HISTORY_MAX_AGE_MS = 180 days` (6-month local usageHistory retention).
 - The effective `serverUrl` comes from `chrome.storage.sync` (default is only a fallback); a stored
   cloud URL overrides the default, so `background.js` has a migration that forces stored
   `*claudetuner*` URLs onto the local default.
@@ -74,15 +76,25 @@ announcements/promos, both of which fail silently if absent.
 the manifest `__MSG_*__` strings. Add user-facing text to both.
 
 ### Local server (`server/`)
-Next.js App Router + `node:sqlite`. Route handlers under `app/api/**` (full surface documented in
-`API.md`). `lib/db.ts` (schema + queries, scoped per `provider`), `lib/plans.ts` (fitness +
-upgrade/downgrade heuristics), `lib/predict.ts` (7d reset projection), `lib/auth.ts` (loose, always
-allows). `app/dashboard/page.tsx` is the local dashboard with a Claude/Gemini/ChatGPT switcher.
-Snapshots are stored and queried **per provider** so the services don't mix into one timeline.
+Next.js App Router + `node:sqlite`. Route handlers under `app/api/**` (full surface in `docs/API.md`).
+- `lib/db.ts` — schema + queries, scoped per `provider`; also Claude Code tables `cc_sessions` /
+  `cc_messages` / `cc_reviews`.
+- `lib/plans.ts` — fitness + `computePlanReview` (keep/upgrade/downgrade + reasons); `lib/predict.ts`
+  (7d reset projection); `lib/auth.ts` (loose, always allows).
+- `lib/cost.ts` — local token-cost estimate (Opus/Sonnet/Haiku pricing, cache write/read split).
+- `lib/cc-transcript.ts` / `lib/cc-scan.ts` / `lib/cc-review.ts` — Claude Code analysis: parse
+  `~/.claude/projects` transcripts, mtime-incremental scan, and an LLM review by spawning the local
+  `claude` CLI (subscription, no API key).
+- `app/dashboard/page.tsx` — main dashboard (provider switcher, 7d/30d/6mo trends, plan review, Claude
+  Code token-cost trend). `app/dashboard/cc/*` — Claude Code analytics (usage patterns, request-centric
+  session view, `claude`-CLI review). `app/dashboard/Breadcrumb.tsx` — path nav.
+
+Snapshots are stored/queried **per provider** so services don't mix into one timeline, and are kept
+indefinitely (full reset-cycle history; the popup keeps a 180-day local cache).
 
 ## Conventions
 - No build/transpile: `bg/` and `ui/` are ES modules; `config.js` and `i18n.js` are classic scripts
   exposing globals.
 - Upstream this repo is a read-only mirror of a private monorepo (see `CONTRIBUTING.md`), but this
   personal fork commits directly to `main`.
-- The extension is self-hostable by design (`README.md` → Self-Hosting); `API.md` is the server spec.
+- The extension is self-hostable by design (`README.md` → Self-Hosting); `docs/API.md` is the server spec.

@@ -4,13 +4,34 @@ Thanks for your interest in contributing! Here's how to get started.
 
 ## Development Setup
 
+### Extension
 1. Fork and clone this repository
 2. Open `chrome://extensions/` in Chrome
 3. Enable **Developer mode**
-4. Click **Load unpacked** and select the repository folder
+4. Click **Load unpacked** and select the **`chrome-extension/`** folder
 5. Visit [claude.ai](https://claude.ai) to start collecting usage data
 
-There is no build step — the source files are loaded directly by Chrome.
+There is no build step — the source files in `chrome-extension/` are loaded directly by Chrome.
+
+### Local server (`server/`)
+This fork ships a local backend the extension talks to at `http://localhost:3000`:
+
+```bash
+cd server
+npm install
+npm run dev        # http://localhost:3000  (dashboard at /dashboard)
+```
+
+It uses Node's builtin `node:sqlite` — no native build tools. The DB lives at
+`server/data.sqlite` (gitignored); **reset it** by deleting that file and restarting.
+Tables: `snapshots` (per-provider usage) and `cc_sessions` / `cc_messages` / `cc_reviews`
+(Claude Code analysis). API surface: [docs/API.md](docs/API.md).
+
+### Local testing (extension + server together)
+1. Start the server (`npm run dev` in `server/`).
+2. Load the extension from `chrome-extension/` (above) — both default to `localhost:3000`
+   (`chrome-extension/config.js` + `chrome-extension/bg/constants.js`).
+3. Open `http://localhost:3000/dashboard`; the Claude Code analytics scans `~/.claude/projects`.
 
 ## Making Changes
 

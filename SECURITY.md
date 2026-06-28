@@ -26,7 +26,7 @@ The following are in scope:
 
 The following are out of scope:
 
-- The Claude Tuner backend server (not part of this repository)
+- The Claude Tuner cloud backend (upstream). This fork's local `server/` runs only on your own machine.
 - Claude.ai itself
 - Chrome Web Store infrastructure
 

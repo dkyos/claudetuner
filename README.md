@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icons/icon128.png" alt="Claude Tuner" width="80" />
+  <img src="chrome-extension/icons/icon128.png" alt="Claude Tuner" width="80" />
 </p>
 
 <h1 align="center">Claude Tuner</h1>
@@ -9,15 +9,14 @@
 </p>
 
 <p align="center">
-  <a href="https://chromewebstore.google.com/detail/claude-tuner/ajnnckikagphjbgpicpoffockabnhond"><img src="https://img.shields.io/badge/Chrome_Web_Store-Install-4285F4?logo=googlechrome&logoColor=white" alt="Chrome Web Store" /></a>
-  <a href="https://claudetuner.com/dashboard/?demo=true"><img src="https://img.shields.io/badge/Live_Demo-Dashboard-FF6B35" alt="Live Demo" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/chaehyun2/claudetuner" alt="License" /></a>
   <a href="README-ko.md"><img src="https://img.shields.io/badge/lang-한국어-blue" alt="Korean" /></a>
 </p>
 
-<p align="center">
-  Trusted by thousands of Claude Pro, Max, Team, and Enterprise users worldwide.
-</p>
+> **Personal local-server fork.** This fork runs the extension against a bundled local backend in
+> [`server/`](server/) at `http://localhost:3000` (instead of the cloud `api.claudetuner.com`) and
+> adds **Claude Code (CLI) usage analytics**. Cloud-only items mentioned below (Chrome Web Store,
+> live demo, hosted team dashboard) refer to the upstream project.
 
 ---
 
@@ -55,6 +54,7 @@ Claude's rate limits are opaque — you don't know how much you've used, when it
 - 6-tier pace indicator (safe → critical)
 - Sparkline charts for usage trends
 - Multi-organization support (auto-detect or pin)
+- 6-month (180-day) local usage history
 </details>
 
 <details open>
@@ -83,6 +83,15 @@ Claude's rate limits are opaque — you don't know how much you've used, when it
 - At-a-glance fitness rating for your subscription
 - Percentile ranking among Claude Tuner users
 - Usage distribution histogram
+</details>
+
+<details open>
+<summary><b>Claude Code Analytics</b> — this fork</summary>
+
+- Local scan of `~/.claude/projects` transcripts (nothing is uploaded)
+- Per-project / per-session breakdown with a request-centric conversation view
+- Token & cost estimate (ccusage-style: Opus / Sonnet / Haiku, cache write/read split)
+- Usage review: the local server calls your `claude` CLI (subscription, no API key) for improvement tips
 </details>
 
 <details>
@@ -134,80 +143,82 @@ git clone https://github.com/chaehyun2/claudetuner.git
 
 1. Open `chrome://extensions/`
 2. Enable **Developer mode**
-3. Click **Load unpacked** and select the cloned folder
+3. Click **Load unpacked** and select the **`chrome-extension/`** folder
 
 ## How It Works
 
 ```
-You ──→ Claude.ai ──→ Claude Tuner extension ──→ Claude Tuner API server
-                        (reads usage data)         (stores history & analytics)
+You ──→ Claude.ai ──→ Claude Tuner extension ──→ Local server (server/)
+                        (reads usage data)         localhost:3000 (history & analytics)
                               │
                               ▼
-                        Extension popup          Web dashboard
-                       (gauges & alerts)     (charts, team, insights)
+                        Extension popup          Local dashboard
+                       (gauges & alerts)     (trends, plan review, Claude Code analytics)
 ```
 
 1. **Collect** — The extension reads your usage data from Claude.ai (no conversation content, ever)
-2. **Analyze** — Snapshots are sent to the API server, which stores history and computes analytics
-3. **Display** — View real-time gauges in the popup, or dive deep on the [web dashboard](https://claudetuner.com/dashboard)
+2. **Analyze** — Snapshots are POSTed to the local server (`server/`), which stores history and computes analytics
+3. **Display** — Real-time gauges in the popup, or the [local dashboard](http://localhost:3000/dashboard) (start `server/` first)
 
 ## Self-Hosting
 
-Point the extension at your own server by editing `config.js`:
+This fork already targets `http://localhost:3000`. Start the bundled server:
+
+```bash
+cd server && npm install && npm run dev
+```
+
+To point at a different host, edit `chrome-extension/config.js` (keep
+`chrome-extension/bg/constants.js` in sync):
 
 ```js
 const CT_CONFIG = {
-  DEFAULT_SERVER_URL: 'https://your-server.example.com',
+  DEFAULT_SERVER_URL: 'http://localhost:3000',
   DEFAULT_API_KEY: 'your-api-key',
-  SITE_URL: 'https://your-dashboard.example.com',
+  SITE_URL: 'http://localhost:3000',
 };
 ```
 
-See [API.md](API.md) for the full server API specification.
+See [docs/API.md](docs/API.md) for the full server API specification.
 
 ## Privacy
 
 - **No conversation content** is ever collected — no messages, files, or prompts
 - Only usage metrics, reset timestamps, plan info, and organization membership
-- Self-service account deletion available anytime
-- Full privacy policy: [claudetuner.com/privacy](https://claudetuner.com/privacy/)
+- In this fork, all data stays on your machine — the local server (`server/data.sqlite`) and browser storage. No external service is contacted for storage.
 
 <details>
 <summary><b>Architecture</b></summary>
 
 ```
-popup.html/js          Popup UI (usage gauges, charts, recommendations)
-options.html/js        Settings page (intervals, alerts, org selection)
-background.js          Service worker (alarm scheduling, message routing)
+chrome-extension/      The MV3 extension — load THIS folder in chrome://extensions
+  popup.html/js        Popup UI (usage gauges, charts, recommendations)
+  options.html/js      Settings page (intervals, alerts, org selection)
+  background.js        Service worker (alarm scheduling, message routing)
   bg/collect.js        Main collection engine (Claude.ai API -> server)
   bg/plan.js           Plan detection, change execution, recommendations
   bg/api.js            Claude.ai API wrapper (dual auth fallback)
   bg/storage.js        Chrome storage helpers
-  bg/constants.js      Configuration constants
-  bg/badge.js          Toolbar badge updates
-  bg/notifications.js  Usage alerts, reset notifications
-  bg/analytics.js      GA4 event tracking
-config.js              Centralized config (server URL, API key)
-content.js             Content script (message relay)
-page-script.js         Injected into Claude.ai (fetch with page auth)
-i18n.js                Localization helper
-_locales/              English and Korean translations
+  bg/constants.js      Config constants (server URL, 180-day retention)
+  config.js / i18n.js  Centralized config + localization
+  page-script.js       Injected into Claude.ai (fetch with page auth)
+  _locales/            English and Korean translations
+server/                Local Next.js backend — API, dashboard, Claude Code analytics
+docs/                  docs/API.md (server spec) + screenshots
 ```
 
-**No build step** — the source files in this repo are identical to what's published on the Chrome Web Store.
+**No build step** — the extension files are plain JS/HTML/CSS (no bundler/transpile).
 
 </details>
 
 <details>
 <summary><b>Verify CWS Build</b></summary>
 
-This extension has no build step. The files in this repository are byte-for-byte identical to the Chrome Web Store package, with one intentional difference: `manifest.json` in the private development repo includes a `pages.dev` preview URL in `externally_connectable` that is stripped during publishing.
-
-To verify:
+In the **upstream** project, the extension files are byte-for-byte identical to the Chrome Web Store package. This fork reorganizes them under `chrome-extension/` and adds a local `server/`, so it is not store-identical. Upstream verification:
 
 1. Install the extension from CWS
 2. Find the installed files at `~/Library/Google/Chrome/Default/Extensions/ajnnckikagphjbgpicpoffockabnhond/<version>/`
-3. Compare with this repository (excluding `_metadata/` added by Chrome)
+3. Compare with the upstream repository (excluding `_metadata/` added by Chrome)
 
 </details>
 
