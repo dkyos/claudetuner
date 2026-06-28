@@ -605,6 +605,8 @@ export interface CcDayTokens {
   input_tokens: number;
   output_tokens: number;
   cache_tokens: number;
+  cache_creation_tokens: number;
+  cache_read_tokens: number;
   sessions: number;
 }
 // Per-day token totals (by session started_at) for the usage trend chart.
@@ -617,6 +619,8 @@ export function getCcDailyTokens(days = 180): CcDayTokens[] {
               SUM(input_tokens) AS input_tokens,
               SUM(output_tokens) AS output_tokens,
               SUM(cache_tokens) AS cache_tokens,
+              SUM(cache_creation_tokens) AS cache_creation_tokens,
+              SUM(cache_read_tokens) AS cache_read_tokens,
               COUNT(*) AS sessions
        FROM cc_sessions
        WHERE started_at >= ?

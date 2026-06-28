@@ -9,6 +9,7 @@ import {
   getDailyUsage,
   getCcCostSummary,
   getCcDailyCost,
+  getCcDailyTokens,
 } from "@/lib/db";
 import { computeFitness, computePlanReview } from "@/lib/plans";
 import { predict7d } from "@/lib/predict";
@@ -62,39 +63,99 @@ function fmtTokens(n: number): string {
   return String(n);
 }
 
-// Daily cost bars (SVG) for the Claude Code token-cost trend.
-function CostBars({ daily }: { daily: { date: string; usd: number }[] }) {
+// Token kinds for the stacked daily bars (ccusage-style: Input/Output/Cache W/R).
+const TOKEN_KINDS = [
+  { key: "input_tokens", label: "Input", color: "#06b6d4" },
+  { key: "output_tokens", label: "Output", color: "#a78bfa" },
+  { key: "cache_creation_tokens", label: "Cache Write", color: "#f59e0b" },
+  { key: "cache_read_tokens", label: "Cache Read", color: "#22c55e" },
+] as const;
+
+type DayTok = {
+  date: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_tokens: number;
+  cache_read_tokens: number;
+};
+
+// Daily token stack (SVG) + legend — ccusage daily, charted.
+function StackedTokenBars({ daily }: { daily: DayTok[] }) {
   const W = 900,
-    H = 90,
+    H = 130,
     padB = 14;
   if (!daily.length)
     return <div style={{ color: "#6b7280", fontSize: 13 }}>데이터 없음</div>;
-  const max = Math.max(...daily.map((d) => d.usd), 0.0001);
+  const max = Math.max(
+    ...daily.map(
+      (d) =>
+        d.input_tokens + d.output_tokens + d.cache_creation_tokens + d.cache_read_tokens
+    ),
+    1
+  );
   const bw = W / daily.length;
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      width="100%"
-      style={{ display: "block", marginTop: 8 }}
-      role="img"
-    >
-      {daily.map((d, i) => {
-        const h = ((H - padB) * d.usd) / max;
-        return (
-          <rect
-            key={i}
-            x={i * bw + bw * 0.12}
-            y={H - padB - h}
-            width={bw * 0.76}
-            height={Math.max(h, d.usd > 0 ? 1 : 0)}
-            fill="#22c55e"
-            opacity={0.8}
-          >
-            <title>{`${d.date}: ${fmtUsd(d.usd)}`}</title>
-          </rect>
-        );
-      })}
-    </svg>
+    <>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width="100%"
+        style={{ display: "block", marginTop: 8 }}
+        role="img"
+      >
+        {daily.map((d, i) => {
+          let y = H - padB;
+          return TOKEN_KINDS.map((k) => {
+            const v = (d as unknown as Record<string, number>)[k.key] || 0;
+            const h = ((H - padB) * v) / max;
+            y -= h;
+            return (
+              <rect
+                key={k.key}
+                x={i * bw + bw * 0.12}
+                y={y}
+                width={bw * 0.76}
+                height={h}
+                fill={k.color}
+                opacity={0.9}
+              >
+                <title>{`${d.date} · ${k.label}: ${fmtTokens(v)}`}</title>
+              </rect>
+            );
+          });
+        })}
+      </svg>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 11, color: "#9ca3af", marginTop: 6 }}>
+        {TOKEN_KINDS.map((k) => (
+          <span key={k.key} style={{ display: "inline-flex", alignItems: "center" }}>
+            <span style={{ display: "inline-block", width: 9, height: 9, background: k.color, borderRadius: 2, marginRight: 5 }} />
+            {k.label}
+          </span>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// Per-model cost horizontal bars.
+function ModelCostBars({ models }: { models: { model: string; usd: number }[] }) {
+  if (!models.length) return null;
+  const max = Math.max(...models.map((m) => m.usd), 0.0001);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+      {models.map((m) => (
+        <div key={m.model} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 120, fontSize: 11, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {m.model.replace(/^claude-/, "").replace(/\[.*\]$/, "")}
+          </div>
+          <div style={{ flex: 1, background: "#0e1117", borderRadius: 4, height: 14 }}>
+            <div style={{ width: `${(100 * m.usd) / max}%`, background: "#22c55e", height: "100%", borderRadius: 4, opacity: 0.8 }} />
+          </div>
+          <div style={{ width: 64, textAlign: "right", fontSize: 11, color: "#9ca3af" }}>
+            {fmtUsd(m.usd)}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -204,6 +265,7 @@ export default async function Dashboard({
   // independent — comes from ~/.claude transcripts, not snapshots.
   const ccCost = getCcCostSummary();
   const ccDaily = getCcDailyCost(days);
+  const ccTokens = getCcDailyTokens(days);
   // Last-30-day CC cost for the plan-review ROI (vs monthly subscription price).
   const ccCost30 = getCcDailyCost(30).reduce((s, d) => s + d.usd, 0);
 
@@ -420,9 +482,13 @@ export default async function Dashboard({
             </div>
           </div>
           <div style={{ ...cardLabel, marginTop: 12, marginBottom: 0 }}>
-            일별 비용 ({period === "7d" ? "7일" : period === "30d" ? "30일" : "6개월"})
+            일별 토큰 ({period === "7d" ? "7일" : period === "30d" ? "30일" : "6개월"}) · 종류별
           </div>
-          <CostBars daily={ccDaily} />
+          <StackedTokenBars daily={ccTokens} />
+          <div style={{ ...cardLabel, marginTop: 14, marginBottom: 0 }}>
+            모델별 비용 (API 환산)
+          </div>
+          <ModelCostBars models={ccCost.by_model.filter((m) => m.usd >= 0.01)} />
           <div style={{ color: "#6b7280", fontSize: 11, marginTop: 6 }}>
             ※ 구독 사용분의 공개 API 단가 환산 추정치입니다 — 실제 청구 금액이 아닙니다.
           </div>
@@ -519,19 +585,27 @@ export default async function Dashboard({
         </div>
       </section>
 
-      {/* charts */}
-      <section style={{ ...card, marginTop: 16 }}>
-        <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
-          5시간 사용량 추세
+      {/* charts — 5h/7d side by side */}
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gap: 12,
+          marginTop: 16,
+        }}
+      >
+        <div style={card}>
+          <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
+            5시간 사용량 추세
+          </div>
+          <UsageChart points={p5} color="#06b6d4" resetMarkers={resetMarkers} />
         </div>
-        <UsageChart points={p5} color="#06b6d4" resetMarkers={resetMarkers} />
-      </section>
-
-      <section style={{ ...card, marginTop: 12 }}>
-        <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
-          7일 사용량 추세{predPoint ? " · 점선 = 리셋 시 예측" : ""}
+        <div style={card}>
+          <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
+            7일 사용량 추세{predPoint ? " · 점선 = 리셋 시 예측" : ""}
+          </div>
+          <UsageChart points={p7} color="#a78bfa" prediction={predPoint} resetMarkers={resetMarkers} />
         </div>
-        <UsageChart points={p7} color="#a78bfa" prediction={predPoint} resetMarkers={resetMarkers} />
       </section>
 
       {/* plan fitness (Claude only) */}
