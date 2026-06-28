@@ -14,6 +14,7 @@ import {
 import { computeFitness, computePlanReview } from "@/lib/plans";
 import { predict7d } from "@/lib/predict";
 import { fmtUsd } from "@/lib/cost";
+import { scanCcTranscripts } from "@/lib/cc-scan";
 import { UsageChart, type Pt } from "./UsageChart";
 
 export const dynamic = "force-dynamic";
@@ -177,21 +178,21 @@ export default async function Dashboard({
   searchParams: Promise<{ email?: string; provider?: string; period?: string }>;
 }) {
   const sp = await searchParams;
+
+  // Claude Code analysis is provider-independent — it reads ~/.claude transcripts,
+  // not claude.ai snapshots. Scan here so the CC sections render even when the
+  // extension has never connected (no snapshots / no users yet).
+  try {
+    scanCcTranscripts();
+  } catch {
+    /* ignore scan errors */
+  }
+
   const users = getUsers();
   const email = sp.email || users[0]?.user_email;
   const now = Date.now();
-
-  if (!email) {
-    return (
-      <main style={{ maxWidth: 980, margin: "0 auto", padding: "40px 20px" }}>
-        <h1 style={{ fontSize: 22 }}>ClaudeMonitor — 로컬 대시보드</h1>
-        <p style={{ color: "#9ca3af" }}>
-          아직 수집된 데이터가 없습니다. 확장을 이 서버로 연결하고 claude.ai에서
-          수집이 한 번 이상 실행되면 여기에 추세와 예측이 표시됩니다.
-        </p>
-      </main>
-    );
-  }
+  // claude.ai connected? Drives whether the snapshot-derived sections render.
+  const hasSnapshots = !!email;
 
   // Claude-only fork: snapshots are stored with provider="claude".
   const provider = "claude";
@@ -205,30 +206,30 @@ export default async function Dashboard({
   const isLong = days > 14;
   const cutoff = now - days * 86400000;
 
-  const latest = getLatestSnapshot(email, provider);
+  const latest = hasSnapshots ? getLatestSnapshot(email!, provider) : null;
   // Recent raw (always) drives fitness/recommendation/latest state.
-  const recent = getRecentSnapshots(email, 6000, { provider });
-  const fitness = isClaude
-    ? computeFitness(recent, latest?.plan ?? null, now)
-    : null;
-  const review = isClaude
-    ? computePlanReview(recent, latest?.plan ?? null, now)
-    : null;
+  const recent = hasSnapshots ? getRecentSnapshots(email!, 6000, { provider }) : [];
+  const fitness =
+    isClaude && hasSnapshots ? computeFitness(recent, latest?.plan ?? null, now) : null;
+  const review =
+    isClaude && hasSnapshots
+      ? computePlanReview(recent, latest?.plan ?? null, now)
+      : null;
 
-  let p5: Pt[];
-  let p7: Pt[];
+  let p5: Pt[] = [];
+  let p7: Pt[] = [];
   let resetMarkers: number[] = [];
   let pred: ReturnType<typeof predict7d> = null;
 
-  if (isLong) {
-    const daily = getDailyUsage(email, days, provider);
+  if (hasSnapshots && isLong) {
+    const daily = getDailyUsage(email!, days, provider);
     p5 = daily
       .filter((d) => d.five_hour_max != null)
       .map((d) => ({ t: Date.parse(d.date + "T00:00:00Z"), v: d.five_hour_max! }));
     p7 = daily
       .filter((d) => d.seven_day_max != null)
       .map((d) => ({ t: Date.parse(d.date + "T00:00:00Z"), v: d.seven_day_max! }));
-  } else {
+  } else if (hasSnapshots) {
     const history = recent.filter((h) => Date.parse(h.collected_at) >= cutoff);
     p5 = history
       .filter((h) => h.five_hour_utilization != null)
@@ -270,7 +271,7 @@ export default async function Dashboard({
   const ccCost30 = getCcDailyCost(30).reduce((s, d) => s + d.usd, 0);
 
   const linkFor = (e: string, p?: string, per?: string) =>
-    `/dashboard?email=${encodeURIComponent(e)}` +
+    `/dashboard?email=${encodeURIComponent(e ?? "")}` +
     `&provider=${encodeURIComponent(p ?? provider)}` +
     `&period=${encodeURIComponent(per ?? period)}`;
 
@@ -287,10 +288,28 @@ export default async function Dashboard({
       >
         <h1 style={{ fontSize: 22, margin: 0 }}>ClaudeMonitor — 로컬 대시보드</h1>
         <span style={{ color: "#9ca3af", fontSize: 13 }}>
-          {email} · Claude
+          {hasSnapshots ? `${email} · Claude` : "claude.ai 미연결"}
           {latest?.plan ? ` · ${latest.plan}` : ""}
         </span>
       </div>
+
+      {/* claude.ai not connected — show CC-only view with a quiet notice */}
+      {!hasSnapshots && (
+        <div
+          style={{
+            ...card,
+            marginTop: 16,
+            borderColor: "#2a2f3a",
+            color: "#9ca3af",
+            fontSize: 13,
+            lineHeight: 1.7,
+          }}
+        >
+          claude.ai 사용량(5h/7d 한도·요금제 리뷰·예측)은 확장을 이 서버로 연결하고
+          수집이 한 번 이상 실행되면 표시됩니다. 그전까지는 아래 <b style={{ color: "#e5e7eb" }}>Claude
+          Code 사용 분석</b>만 표시됩니다.
+        </div>
+      )}
 
       {/* user switcher */}
       {users.length > 1 && (
@@ -517,7 +536,9 @@ export default async function Dashboard({
         )}
       </div>
 
-      {/* summary cards */}
+      {/* summary cards + trend charts — claude.ai snapshots only */}
+      {hasSnapshots && (
+      <>
       <section
         style={{
           display: "grid",
@@ -607,9 +628,11 @@ export default async function Dashboard({
           <UsageChart points={p7} color="#a78bfa" prediction={predPoint} resetMarkers={resetMarkers} />
         </div>
       </section>
+      </>
+      )}
 
       {/* plan fitness (Claude only) */}
-      {isClaude && (
+      {isClaude && hasSnapshots && (
         <section style={{ ...card, marginTop: 16 }}>
           <div style={{ ...cardLabel, color: "#e5e7eb", fontWeight: 600 }}>
             플랜 적합도
