@@ -22,82 +22,6 @@ import {
 } from './bg/plan.js';
 import { collectAndSend as _collectAndSend, getLastActiveOrgId } from './bg/collect.js';
 import { getCadence, isCollectionPaused, setCadenceChangeHandler } from './bg/cadence-config.js';
-import { collectChatGPT } from './bg/collect-chatgpt.js';
-import { collectGemini } from './bg/collect-gemini.js';
-
-// Check if optional host permission is granted for a provider
-function hasProviderPermission(provider) {
-  const origins = {
-    chatgpt: ['https://chatgpt.com/*'],
-    gemini: ['https://gemini.google.com/*'],
-  };
-  if (!origins[provider]) return Promise.resolve(true);
-  return chrome.permissions.contains({ origins: origins[provider] });
-}
-
-// ── ChatGPT in-page usage panel (content scripts) ──
-// chatgpt.com is an OPTIONAL host permission, so its content scripts can't be
-// declared statically in the manifest — register them dynamically once the
-// permission is granted, and unregister when revoked.
-const CHATGPT_INJECT = {
-  id: 'ct-chatgpt-usage',
-  matches: ['https://chatgpt.com/*'],
-  js: ['config.js', 'usage-shared.js', 'chatgpt-sidebar.js', 'chatgpt-input.js'],
-  css: ['chatgpt-usage.css'],
-  runAt: 'document_idle',
-};
-
-async function registerChatGPTScripts() {
-  try {
-    if (!(await hasProviderPermission('chatgpt'))) return;
-    const existing = await chrome.scripting
-      .getRegisteredContentScripts({ ids: [CHATGPT_INJECT.id] })
-      .catch(() => []);
-    // Update (not skip) when already registered: a persisted registration from an
-    // older build could otherwise keep injecting a stale js/css list after update.
-    if (existing.length > 0) {
-      await chrome.scripting.updateContentScripts([CHATGPT_INJECT]);
-    } else {
-      await chrome.scripting.registerContentScripts([CHATGPT_INJECT]);
-    }
-  } catch (e) {
-    console.warn('[Claude Monitor] registerChatGPTScripts failed:', e.message);
-  }
-}
-
-async function unregisterChatGPTScripts() {
-  try {
-    await chrome.scripting.unregisterContentScripts({ ids: [CHATGPT_INJECT.id] });
-  } catch { /* not registered */ }
-}
-
-// Inject into already-open chatgpt.com tabs (registerContentScripts only affects
-// future navigations) — covers permission-grant and extension update/reload.
-async function injectChatGPTOpenTabs() {
-  try {
-    if (!(await hasProviderPermission('chatgpt'))) return;
-    const tabs = await chrome.tabs.query({ url: 'https://chatgpt.com/*' });
-    for (const tab of tabs) {
-      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: CHATGPT_INJECT.js }).catch(() => {});
-      chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: CHATGPT_INJECT.css }).catch(() => {});
-    }
-  } catch { /* tabs API may fail in some contexts */ }
-}
-
-chrome.permissions.onAdded.addListener((perm) => {
-  if (perm.origins?.some(o => o.includes('chatgpt.com'))) {
-    registerChatGPTScripts();
-    injectChatGPTOpenTabs();
-  }
-});
-chrome.permissions.onRemoved.addListener((perm) => {
-  if (perm.origins?.some(o => o.includes('chatgpt.com'))) {
-    unregisterChatGPTScripts();
-    // Already-injected scripts in open chatgpt.com tabs can't be messaged by URL
-    // once the host permission is gone. Instead they self-teardown: their next
-    // GET_SIDEBAR_USAGE poll gets `{ revoked: true }` (handler checks permission).
-  }
-});
 
 // Whether the user currently has a Claude.ai session (sessionKey cookie).
 // Used to attempt Claude collection even for provider-first users who later
@@ -111,64 +35,7 @@ async function hasClaudeSession() {
   }
 }
 
-// Merge ChatGPT orgs into collectedOrgs storage (independent of Claude collection)
-async function mergeChatGPTOrgs(force = false) {
-  try {
-    const result = await collectChatGPT(force);
-    const { collectedOrgs = [] } = await chrome.storage.local.get({ collectedOrgs: [] });
-    const nonChatGPT = collectedOrgs.filter(o => o.provider !== 'chatgpt');
-    if (result.orgs.length > 0) {
-      // Preserve user-pinned primary org
-      const prevPrimaryUuid = collectedOrgs.find(o => o.isPrimary)?.uuid;
-      const merged = result.orgs.map(o => ({ ...o, isPrimary: o.uuid === prevPrimaryUuid }));
-      await chrome.storage.local.set({ collectedOrgs: [...nonChatGPT, ...merged] });
-      // Save history for chart display
-      for (const org of result.orgs) {
-        await appendUsageHistory({
-          t: Date.now(), h5: org.h5 ?? null, d7: org.d7 ?? null,
-          p: org.plan, r7: org.resetsAt7d || null, org: org.uuid,
-        });
-      }
-      // Provider-only users (no Claude) — refresh the badge to this provider's
-      // usage, since the Claude path won't run to update it.
-      const { accountCache } = await chrome.storage.local.get({ accountCache: null });
-      if (!accountCache?.email) await updateBadgeForSelectedOrg(null);
-    }
-  } catch (e) {
-    console.warn('[Claude Monitor] ChatGPT collection skipped:', e.message);
-  }
-}
-
-// Merge Gemini orgs into collectedOrgs storage (independent of Claude collection)
-async function mergeGeminiOrgs(force = false) {
-  try {
-    const result = await collectGemini(force);
-    const { collectedOrgs = [] } = await chrome.storage.local.get({ collectedOrgs: [] });
-    const nonGemini = collectedOrgs.filter(o => o.provider !== 'gemini');
-    if (result.orgs.length > 0) {
-      // Preserve user-pinned primary org
-      const prevPrimaryUuid = collectedOrgs.find(o => o.isPrimary)?.uuid;
-      const merged = result.orgs.map(o => ({ ...o, isPrimary: o.uuid === prevPrimaryUuid }));
-      await chrome.storage.local.set({ collectedOrgs: [...nonGemini, ...merged] });
-      // Save history for chart display
-      for (const org of result.orgs) {
-        await appendUsageHistory({
-          t: Date.now(), h5: org.h5 ?? null, d7: org.d7 ?? null,
-          p: org.plan, r7: org.resetsAt7d || null, org: org.uuid,
-        });
-      }
-      // Provider-only users (no Claude) — refresh the badge to this provider's
-      // usage, since the Claude path won't run to update it.
-      const { accountCache } = await chrome.storage.local.get({ accountCache: null });
-      if (!accountCache?.email) await updateBadgeForSelectedOrg(null);
-    }
-  } catch (e) {
-    console.warn('[Claude Monitor] Gemini collection skipped:', e.message);
-  }
-}
-
 // Wrap collectAndSend to suppress spurious cookie-change events during collection
-// ChatGPT/Gemini collection runs independently after Claude (regardless of Claude result)
 async function collectAndSend(opts) {
   _collecting = true;
   try {
@@ -180,7 +47,7 @@ async function collectAndSend(opts) {
       console.log('[Claude Monitor] Collection paused by server (provider incident). Skipping all providers.');
       return { success: false, paused: true };
     }
-    const { collectClaude = true, collectChatGPT = true, collectGemini = true } = await chrome.storage.sync.get({ collectClaude: true, collectChatGPT: true, collectGemini: true });
+    const { collectClaude = true } = await chrome.storage.sync.get({ collectClaude: true });
     let result = { success: false, skipped: true };
     // Don't attempt Claude collection for users who clearly aren't Claude users —
     // it would always fail and surface a misleading "session expired" error +
@@ -222,25 +89,8 @@ async function collectAndSend(opts) {
       const prevStale = await getLastStatus();
       if (prevStale?.error) { await setStatus(null); resetIcon(); }
     }
-    // Await provider collection (sequentially) so the MV3 service worker stays
-    // alive until each fetch+POST finishes. Fire-and-forget here meant the SW
-    // could be terminated right after the awaited Claude work, killing in-flight
-    // provider requests → dropped snapshots / irregular collection. Sequential
-    // (not parallel) keeps peak load minimal on low-spec machines; .catch keeps
-    // each provider independent so one failure doesn't block the other.
-    if (collectChatGPT && await hasProviderPermission('chatgpt')) {
-      await mergeChatGPTOrgs(opts?.force).catch(() => {});
-    }
-    if (collectGemini && await hasProviderPermission('gemini')) {
-      await mergeGeminiOrgs(opts?.force).catch(() => {});
-    }
     return result;
   } catch (e) {
-    // Claude failed — still try ChatGPT/Gemini independently if enabled.
-    // Await (sequentially) so the SW isn't terminated mid-request.
-    const { collectChatGPT = true, collectGemini = true } = await chrome.storage.sync.get({ collectChatGPT: true, collectGemini: true });
-    if (collectChatGPT && await hasProviderPermission('chatgpt')) await mergeChatGPTOrgs(opts?.force).catch(() => {});
-    if (collectGemini && await hasProviderPermission('gemini')) await mergeGeminiOrgs(opts?.force).catch(() => {});
     throw e;
   } finally {
     _collecting = false;
@@ -322,18 +172,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     if (sidePanelAutoOpened === undefined) {
       await chrome.storage.local.set({ sidePanelAutoOpened: true });
     }
-    // v1.24→1.25 migration: re-request previously-required host permissions
-    // that moved to optional_host_permissions (Chrome may not auto-retain them)
-    const { collectChatGPT = true, collectGemini = true } = await chrome.storage.sync.get({ collectChatGPT: true, collectGemini: true });
-    const optionalOrigins = [];
-    if (collectChatGPT) optionalOrigins.push('https://chatgpt.com/*');
-    if (collectGemini) optionalOrigins.push('https://gemini.google.com/*');
-    if (optionalOrigins.length > 0) {
-      const already = await chrome.permissions.contains({ origins: optionalOrigins });
-      if (!already) {
-        console.log('[Claude Monitor] Migration: optional provider permissions not retained, popup will prompt');
-      }
-    }
   }
   await setupAlarm();
   sendGAEvent('extension_installed', { reason: details.reason });
@@ -353,10 +191,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       }).catch(() => {});
     }
   } catch { /* tabs API may fail in some contexts */ }
-
-  // Register + inject ChatGPT panel scripts (no-op without the optional permission)
-  await registerChatGPTScripts();
-  await injectChatGPTOpenTabs();
 });
 
 // External connect listener (used to wake up the service worker)
@@ -388,23 +222,14 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
   }
 
   // Get collection status (for welcome page onboarding checklist).
-  // Returns per-provider collection state so the welcome page can drive a
-  // multi-provider checklist (Claude / ChatGPT / Gemini). `success` and
-  // `lastStatus` are kept for backward compatibility with older welcome pages.
+  // Returns Claude collection state (welcome page onboarding checklist).
   if (message && message.type === 'get_status') {
     (async () => {
       const status = await getLastStatus();
       const { collectedOrgs = [] } = await chrome.storage.local.get({ collectedOrgs: [] });
-      const collectedBy = (provider) =>
-        collectedOrgs.some(o => (o.provider || 'claude') === provider);
-      const [chatgptPerm, geminiPerm] = await Promise.all([
-        hasProviderPermission('chatgpt'),
-        hasProviderPermission('gemini'),
-      ]);
+      const collectedClaude = collectedOrgs.some(o => (o.provider || 'claude') === 'claude');
       const providers = {
-        claude: { collected: collectedBy('claude') || !!status?.success, hasPermission: true },
-        chatgpt: { collected: collectedBy('chatgpt'), hasPermission: chatgptPerm },
-        gemini: { collected: collectedBy('gemini'), hasPermission: geminiPerm },
+        claude: { collected: collectedClaude || !!status?.success, hasPermission: true },
       };
       const anyCollected = Object.values(providers).some(p => p.collected);
       sendResponse({
@@ -514,9 +339,6 @@ chrome.runtime.onStartup.addListener(async () => {
   await setupAlarm();
   sendGAEvent('extension_loaded');
   await restoreSidePanelPreference();
-  // Re-register dynamic ChatGPT scripts on browser restart (registrations persist,
-  // but this self-heals if they were lost; no-op without the optional permission).
-  await registerChatGPTScripts();
 });
 
 // Wake from sleep/lock: collect immediately when the system becomes active.
@@ -914,16 +736,13 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 // Build a short label like "Claude" or "Claude · Dable Labs" for reset notifications.
 // Single-Claude-org users see just the provider name; multi-org / non-Claude users
 // get the org name appended so they can tell which account the alarm is for.
-const PROVIDER_LABELS = { claude: 'Claude', chatgpt: 'ChatGPT', gemini: 'Gemini' };
 async function buildResetContextLabel() {
   const { collectedOrgs = [] } = await chrome.storage.local.get({ collectedOrgs: [] });
   if (!collectedOrgs.length) return null;
   const primary = collectedOrgs.find(o => o.isPrimary) || collectedOrgs[0];
-  const provider = primary.provider || 'claude';
-  const providerName = PROVIDER_LABELS[provider] || provider;
-  if (collectedOrgs.length === 1 && provider === 'claude') return providerName;
+  if (collectedOrgs.length === 1) return 'Claude';
   const orgName = (primary.name || '').trim();
-  return orgName ? `${providerName} · ${orgName}` : providerName;
+  return orgName ? `Claude · ${orgName}` : 'Claude';
 }
 
 async function getResetNotifContext() {
@@ -1189,18 +1008,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
   if (message.type === 'GET_SIDEBAR_USAGE') {
-    const provider = message.provider || 'claude';
-    // Non-Claude panels require the optional host permission. If it was revoked
-    // after injection, tell the (still-running) content script to tear itself
-    // down — we can't message provider tabs by URL once the permission is gone.
-    if (provider !== 'claude') {
-      hasProviderPermission(provider).then(ok => {
-        if (!ok) { sendResponse({ revoked: true }); return; }
-        return buildSidebarUsageData(message.orgId, provider).then(sendResponse);
-      });
-      return true;
-    }
-    buildSidebarUsageData(message.orgId, provider).then(sendResponse);
+    buildSidebarUsageData(message.orgId, 'claude').then(sendResponse);
     return true;
   }
   if (message.type === 'GET_ORGANIZATIONS') {
@@ -1451,21 +1259,11 @@ function calcSidebarPrediction(history, key, currentUtil, resetsAt, orgUuid, pro
 // Notify in-page usage panels (Claude + provider) to re-fetch with their own
 // orgId/provider. Each content script re-requests GET_SIDEBAR_USAGE on receipt.
 async function pushSidebarUsage() {
-  // Query each origin independently: a tabs.query that includes an origin the
-  // extension lacks host permission for (chatgpt.com is optional) can reject,
-  // and a combined query would then drop the Claude refresh too. Claude is
-  // always granted; ChatGPT only when its optional permission is present.
   const refresh = (tab) => chrome.tabs.sendMessage(tab.id, { type: 'SIDEBAR_USAGE_REFRESH' }).catch(() => {});
   try {
     const tabs = await chrome.tabs.query({ url: 'https://claude.ai/*' });
     for (const tab of tabs) refresh(tab);
   } catch { /* content script may not be ready */ }
-  try {
-    if (await hasProviderPermission('chatgpt')) {
-      const tabs = await chrome.tabs.query({ url: 'https://chatgpt.com/*' });
-      for (const tab of tabs) refresh(tab);
-    }
-  } catch { /* no permission / not ready */ }
 }
 
 // Hook into storage changes to push sidebar updates after collection.
@@ -1475,17 +1273,9 @@ async function pushSidebarUsage() {
 // is called explicitly in collect.js.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.collectedOrgs) {
-    // Push when any provider that has an in-page panel changed. pushSidebarUsage()
-    // notifies both claude.ai and chatgpt.com tabs; each re-fetches its own data.
-    const PANEL_PROVIDERS = ['claude', 'chatgpt'];
-    const oldVal = changes.collectedOrgs.oldValue || [];
-    const newVal = changes.collectedOrgs.newValue || [];
-    const changed = PANEL_PROVIDERS.some(p => {
-      const o = oldVal.filter(x => (x.provider || 'claude') === p);
-      const n = newVal.filter(x => (x.provider || 'claude') === p);
-      return JSON.stringify(o) !== JSON.stringify(n);
-    });
-    if (changed) pushSidebarUsage();
+    const oldVal = (changes.collectedOrgs.oldValue || []).filter(x => (x.provider || 'claude') === 'claude');
+    const newVal = (changes.collectedOrgs.newValue || []).filter(x => (x.provider || 'claude') === 'claude');
+    if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) pushSidebarUsage();
   }
 });
 

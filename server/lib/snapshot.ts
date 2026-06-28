@@ -7,17 +7,14 @@ export function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-export function snapshotProvider(body: Record<string, any>): string {
-  return body.provider || "claude";
-}
-
 export function parseSnapshotBody(
   body: Record<string, any>
 ): InsertSnapshotInput {
   const extra = body.extra_usage || null;
   return {
     user_email: body.user_email || body.email || "unknown@local",
-    provider: snapshotProvider(body),
+    provider: "claude", // Claude-only fork — provider column kept, fixed to claude
+
     plan: body.plan ?? null,
     org_uuid: body.claude_org_uuid ?? null,
     install_id: body.install_id ?? null,

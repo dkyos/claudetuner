@@ -6,7 +6,6 @@ import {
   getUsers,
   getRecentSnapshots,
   getLatestSnapshot,
-  getProvidersForEmail,
   getDailyUsage,
   getCcCostSummary,
   getCcDailyCost,
@@ -19,11 +18,6 @@ import { UsageChart, type Pt } from "./UsageChart";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const PROVIDER_LABEL: Record<string, string> = {
-  claude: "Claude",
-  gemini: "Gemini",
-  chatgpt: "ChatGPT",
-};
 const COST: Record<string, string> = {
   Free: "Free",
   Pro: "$20/mo",
@@ -136,17 +130,9 @@ export default async function Dashboard({
     );
   }
 
-  // Scope to a provider so Claude/Gemini/ChatGPT don't collapse into one
-  // timeline (mixing them is what made the latest value read as 0%). Default to
-  // Claude when present.
-  const providers = getProvidersForEmail(email);
-  const provider =
-    sp.provider ||
-    (providers.some((p) => p.provider === "claude")
-      ? "claude"
-      : providers[0]?.provider) ||
-    "claude";
-  const isClaude = provider === "claude";
+  // Claude-only fork: snapshots are stored with provider="claude".
+  const provider = "claude";
+  const isClaude = true;
 
   // Period: 7d/30d use raw snapshots (+ prediction + reset markers); 6mo uses a
   // daily down-sample (peak/day) and hides prediction (predict7d needs detail).
@@ -235,8 +221,8 @@ export default async function Dashboard({
       >
         <h1 style={{ fontSize: 22, margin: 0 }}>ClaudeMonitor — 로컬 대시보드</h1>
         <span style={{ color: "#9ca3af", fontSize: 13 }}>
-          {email} · {PROVIDER_LABEL[provider] ?? provider}
-          {isClaude && latest?.plan ? ` · ${latest.plan}` : ""}
+          {email} · Claude
+          {latest?.plan ? ` · ${latest.plan}` : ""}
         </span>
       </div>
 
@@ -256,27 +242,6 @@ export default async function Dashboard({
               }}
             >
               {u.user_email}
-            </a>
-          ))}
-        </div>
-      )}
-
-      {/* provider switcher */}
-      {providers.length > 1 && (
-        <div style={{ margin: "8px 0 0", fontSize: 12 }}>
-          <span style={{ color: "#6b7280", marginRight: 8 }}>서비스:</span>
-          {providers.map((p) => (
-            <a
-              key={p.provider}
-              href={linkFor(email, p.provider)}
-              style={{
-                marginRight: 10,
-                color: p.provider === provider ? "#06b6d4" : "#6b7280",
-                textDecoration: "none",
-                fontWeight: p.provider === provider ? 700 : 400,
-              }}
-            >
-              {PROVIDER_LABEL[p.provider] ?? p.provider} ({p.count})
             </a>
           ))}
         </div>
@@ -405,7 +370,7 @@ export default async function Dashboard({
         <div style={card}>
           <div style={cardLabel}>현재 플랜</div>
           <div style={{ fontSize: 20, fontWeight: 700 }}>
-            {isClaude ? latest?.plan ?? "—" : PROVIDER_LABEL[provider] ?? provider}
+            {latest?.plan ?? "—"}
           </div>
           <div style={{ color: "#6b7280", fontSize: 11, marginTop: 4 }}>
             마지막 수집{" "}
