@@ -910,7 +910,11 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       }
     }
 
-    await collectAndSend();
+    // Reset-boundary collections (pre1 = pre-reset peak, after = post-reset drop)
+    // must bypass the delta-gate so the window's peak and reset are recorded on
+    // the server. Without force, a sub-threshold change near reset is dropped and
+    // the server loses the peak (client-only). force=true mirrors MANUAL_COLLECT.
+    await collectAndSend({ force: true });
   }
 });
 
