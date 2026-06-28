@@ -24,6 +24,8 @@ const COST: Record<string, string> = {
   "Max 5x": "$100/mo",
   "Max 20x": "$200/mo",
 };
+// Monthly subscription price (USD) for the CC ROI calc.
+const PLAN_MONTHLY: Record<string, number> = { Pro: 20, "Max 5x": 100, "Max 20x": 200 };
 const FITNESS_PLANS = ["Pro", "Max 5x", "Max 20x"];
 const WINDOWS: { key: string; label: string }[] = [
   { key: "24h", label: "최근 24h" },
@@ -202,6 +204,8 @@ export default async function Dashboard({
   // independent — comes from ~/.claude transcripts, not snapshots.
   const ccCost = getCcCostSummary();
   const ccDaily = getCcDailyCost(days);
+  // Last-30-day CC cost for the plan-review ROI (vs monthly subscription price).
+  const ccCost30 = getCcDailyCost(30).reduce((s, d) => s + d.usd, 0);
 
   const linkFor = (e: string, p?: string, per?: string) =>
     `/dashboard?email=${encodeURIComponent(e)}` +
@@ -486,6 +490,41 @@ export default async function Dashboard({
                     <li key={i}>{r}</li>
                   ))}
                 </ul>
+                {(() => {
+                  const planCost = PLAN_MONTHLY[review.plan];
+                  if (!planCost || ccCost30 <= 0) return null;
+                  const roi = ccCost30 / planCost;
+                  const verdict =
+                    roi >= 1
+                      ? "구독료 이상으로 활용 중 — 유지·업그레이드 가치"
+                      : roi >= 0.3
+                        ? "구독료에 부합하는 활용"
+                        : "구독료 대비 여유 있음";
+                  const roiColor = roi >= 1 ? "#22c55e" : roi >= 0.3 ? "#f59e0b" : "#9ca3af";
+                  return (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: "8px 12px",
+                        background: "#0e1117",
+                        border: "1px solid #1f2530",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        color: "#cbd5e1",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      🧑‍💻 <b>Claude Code ROI</b> — 최근 30일{" "}
+                      <b style={{ color: "#22c55e" }}>{fmtUsd(ccCost30)}</b> 상당 사용 ={" "}
+                      {review.plan} ({COST[review.plan] ?? "—"})의{" "}
+                      <b style={{ color: roiColor }}>{roi.toFixed(1)}×</b>
+                      <span style={{ color: "#9ca3af" }}> · {verdict}</span>
+                      <div style={{ color: "#6b7280", fontSize: 11, marginTop: 4 }}>
+                        구독 토큰의 공개 API 단가 환산 — 한도 적합도(위)와 함께 보세요.
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div style={{ color: "#6b7280", fontSize: 11, marginTop: 8 }}>
                   ※ 회사 업그레이드 요청 시 위 근거를 그대로 첨부할 수 있습니다.
                 </div>
