@@ -3,7 +3,7 @@
  * and have .google.com cookies (like __Secure-1PSID) automatically included?
  *
  * HOW TO RUN:
- * 1. Open chrome://extensions → Claude Tuner → "Service Worker" link
+ * 1. Open chrome://extensions → Claude Monitor → "Service Worker" link
  * 2. In the DevTools console, paste the content of this file and run it
  * 3. Make sure you're logged into Google in Chrome (but Gemini tab NOT required)
  *

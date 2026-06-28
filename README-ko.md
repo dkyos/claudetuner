@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="chrome-extension/icons/icon128.png" alt="Claude Tuner" width="80" />
+  <img src="chrome-extension/icons/icon128.png" alt="Claude Monitor" width="80" />
 </p>
 
-<h1 align="center">Claude Tuner</h1>
+<h1 align="center">Claude Monitor</h1>
 
 <p align="center">
   Claude 사용량 한도를 실시간으로 추적 — Chat, Code, Cowork, Design 모든 제품 지원
@@ -24,9 +24,9 @@
   <img src="docs/screenshots/dashboard-top.png" alt="대시보드 — 사용률 게이지, 플랜 적합도, 주간 트렌드" width="720" />
 </p>
 
-## 왜 Claude Tuner?
+## 왜 Claude Monitor?
 
-Claude의 사용량 한도는 불투명합니다 — 얼마나 썼는지, 언제 리셋되는지, 내 플랜이 맞는지 알 수 없습니다. Claude Tuner가 해결합니다.
+Claude의 사용량 한도는 불투명합니다 — 얼마나 썼는지, 언제 리셋되는지, 내 플랜이 맞는지 알 수 없습니다. Claude Monitor가 해결합니다.
 
 - **한도 확인** — 5시간 / 7일 사용률 게이지 + 리셋 카운트다운
 - **리셋 예측** — 윈도우 종료 전에 한도에 도달할지 미리 확인
@@ -81,7 +81,7 @@ Claude의 사용량 한도는 불투명합니다 — 얼마나 썼는지, 언제
 <summary><b>플랜 적합도 점수</b></summary>
 
 - 현재 구독의 적합도 한눈에 확인
-- Claude Tuner 사용자 중 백분위 순위
+- Claude Monitor 사용자 중 백분위 순위
 - 사용량 분포 히스토그램
 </details>
 
@@ -148,7 +148,7 @@ git clone https://github.com/chaehyun2/claudetuner.git
 ## 작동 방식
 
 ```
-사용자 ──→ Claude.ai ──→ Claude Tuner 확장 ──→ 로컬 서버 (server/)
+사용자 ──→ Claude.ai ──→ Claude Monitor 확장 ──→ 로컬 서버 (server/)
                           (사용량 데이터 읽기)    localhost:3000 (히스토리 & 분석)
                                 │
                                 ▼
@@ -231,4 +231,4 @@ docs/                  docs/API.md (서버 명세) + 스크린샷
 
 ---
 
-<sub>Claude Tuner는 Anthropic과 제휴하거나 보증받지 않습니다. 토큰 한도는 커뮤니티에서 관찰한 추정치이며 공식 수치가 아닙니다.</sub>
+<sub>Claude Monitor는 Anthropic과 제휴하거나 보증받지 않습니다. 토큰 한도는 커뮤니티에서 관찰한 추정치이며 공식 수치가 아닙니다.</sub>

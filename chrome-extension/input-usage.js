@@ -1,4 +1,4 @@
-// Claude Tuner — Input Area Usage Strip
+// Claude Monitor — Input Area Usage Strip
 // Compact 1-line usage display below Claude.ai's chat input area.
 // Mount strategy adapted from Claude-Usage-Tracker (sshnox/Claude-Usage-Tracker):
 //   Shadow DOM + insertBefore sibling + MutationObserver remount.
@@ -27,7 +27,7 @@
       settings: '설정',
       soon: '곧 리셋',
       no_data: '데이터 수집 중...',
-      brand: 'Claude Tuner',
+      brand: 'Claude Monitor',
     },
     en: {
       usage_5h: '5h usage',
@@ -41,7 +41,7 @@
       settings: 'Settings',
       soon: 'soon',
       no_data: 'Collecting data...',
-      brand: 'Claude Tuner',
+      brand: 'Claude Monitor',
     },
   };
 

@@ -1,4 +1,4 @@
-// Claude Tuner — Sidebar Usage Panel
+// Claude Monitor — Sidebar Usage Panel
 // Injects a compact usage display into Claude.ai's left sidebar.
 // Uses Claude.ai's Tailwind CSS classes for automatic dark/light mode.
 
@@ -38,7 +38,7 @@
       tip_extra: '기본 한도 초과 시\n추가 과금되는 사용량.',
       tip_peak: '피크 시간대 (평일 12-18 UTC).\n5h 한도가 빠르게 소진됩니다.',
       tip_plan: '현재 활성 플랜.',
-      tip_brand: 'Claude Tuner',
+      tip_brand: 'Claude Monitor',
       notices: '공지사항',
     },
     en: {
@@ -57,7 +57,7 @@
       tip_extra: 'Additional usage billed beyond\nyour plan\'s included limit.',
       tip_peak: 'Peak hours (weekdays 12-18 UTC).\n5h limit drains faster.',
       tip_plan: 'Your current active plan.',
-      tip_brand: 'Claude Tuner',
+      tip_brand: 'Claude Monitor',
       notices: 'Notices',
     },
   };
@@ -272,7 +272,7 @@
     header.className = 'ct-sb-header';
     const logoUrl = chrome.runtime.getURL('icons/icon16.png');
     header.innerHTML = `
-      <a href="http://localhost:3000/dashboard/?utm_source=sidebar" target="_blank" rel="noopener" class="ct-sb-logo-link" title="Claude Tuner Dashboard">
+      <a href="http://localhost:3000/dashboard/?utm_source=sidebar" target="_blank" rel="noopener" class="ct-sb-logo-link" title="Claude Monitor Dashboard">
         <img src="${logoUrl}" class="ct-sb-logo" alt="CT">
       </a>
       <span class="ct-sb-title text-text-500">Usage</span>

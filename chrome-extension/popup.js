@@ -38,7 +38,7 @@ async function checkProviderPermissions() {
         chrome.runtime.sendMessage({ type: 'MANUAL_COLLECT' }).catch(() => {});
       }
     } catch (e) {
-      console.warn('[Claude Tuner] Permission request failed:', e.message);
+      console.warn('[Claude Monitor] Permission request failed:', e.message);
     }
   });
   banner.appendChild(btn);

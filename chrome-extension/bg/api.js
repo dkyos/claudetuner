@@ -25,17 +25,17 @@ export async function fetchClaudeApi(path, options = {}) {
       return await fetchViaTab(tabs[0].id, fullUrl, options);
     } catch (tabError) {
       tabErrorMsg = tabError.message;
-      console.warn('[Claude Tuner] Tab fetch failed, trying cookie fallback:', tabErrorMsg);
+      console.warn('[Claude Monitor] Tab fetch failed, trying cookie fallback:', tabErrorMsg);
     }
   } else {
     tabErrorMsg = 'No claude.ai tab';
-    console.log('[Claude Tuner] No Claude.ai tab, using cookie fallback');
+    console.log('[Claude Monitor] No Claude.ai tab, using cookie fallback');
   }
 
   // Fallback: cookie-based direct call
   try {
     const data = await fetchWithCookies(fullUrl, options);
-    console.log(`[Claude Tuner] Cookie fallback succeeded for ${path}`);
+    console.log(`[Claude Monitor] Cookie fallback succeeded for ${path}`);
     return data;
   } catch (cookieError) {
     const isRateLimit = tabErrorMsg.includes('err_rate_limit') || cookieError.message.includes('err_rate_limit');
@@ -93,7 +93,7 @@ export async function fetchViaTab(tabId, fullUrl, options) {
     const body = result?.body || '';
     const msgText = result?.message || '';
     if (!options.quiet) {
-      console.debug(`[Claude Tuner] Tab API fallback: url=${fullUrl}, status=${status}, message=${msgText}`);
+      console.debug(`[Claude Monitor] Tab API fallback: url=${fullUrl}, status=${status}, message=${msgText}`);
     }
 
     if (status === 401 || status === 403) {

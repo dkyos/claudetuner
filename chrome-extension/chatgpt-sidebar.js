@@ -1,4 +1,4 @@
-// Claude Tuner — ChatGPT Sidebar Usage Panel
+// Claude Monitor — ChatGPT Sidebar Usage Panel
 // Injects a compact usage display into ChatGPT's left sidebar, just above the
 // account/profile footer. Self-contained styling (chatgpt-usage.css) with
 // ChatGPT dark-mode (html.dark) support. Shares pure helpers via __ctUsageCore.

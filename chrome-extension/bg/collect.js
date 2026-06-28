@@ -42,7 +42,7 @@ export function updateOrgPollState(state, currentValues, changed) {
   // Zombie org: no active 5h window (h5=0/null, r5=null) → fast-track to dormant
   const isZombie = (currentValues.h5 == null || currentValues.h5 === 0) && !currentValues.resetsAt5h;
   if (isZombie && state.tier !== 'dormant') {
-    console.log(`[Claude Tuner] Org poll zombie detected (h5=0, r5=null): ${state.tier} → dormant`);
+    console.log(`[Claude Monitor] Org poll zombie detected (h5=0, r5=null): ${state.tier} → dormant`);
     return { ...state, tier: 'dormant', unchangedCount: 0, lastValues: currentValues, lastPollAt: Date.now() };
   }
   const newCount = state.unchangedCount + 1;
@@ -50,7 +50,7 @@ export function updateOrgPollState(state, currentValues, changed) {
   const tierIdx = ORG_POLL_TIER_ORDER.indexOf(state.tier);
   if (newCount >= tierInfo.promoteAfter && tierIdx < ORG_POLL_TIER_ORDER.length - 1) {
     const nextTier = ORG_POLL_TIER_ORDER[tierIdx + 1];
-    console.log(`[Claude Tuner] Org poll tier promoted: ${state.tier} → ${nextTier}`);
+    console.log(`[Claude Monitor] Org poll tier promoted: ${state.tier} → ${nextTier}`);
     return { ...state, tier: nextTier, unchangedCount: 0, lastValues: currentValues, lastPollAt: Date.now() };
   }
   return { ...state, unchangedCount: newCount, lastValues: currentValues, lastPollAt: Date.now() };
@@ -209,7 +209,7 @@ export async function getLastActiveOrgId() {
     const cookie = await chrome.cookies.get({ name: 'lastActiveOrg', url: 'https://claude.ai' });
     return cookie?.value || null;
   } catch (e) {
-    console.warn('[Claude Tuner] lastActiveOrg cookie read failed:', e.message);
+    console.warn('[Claude Monitor] lastActiveOrg cookie read failed:', e.message);
     return null;
   }
 }
@@ -235,7 +235,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
   // Skip collection if account is deleted
   const { account_deleted } = await chrome.storage.local.get({ account_deleted: false });
   if (account_deleted) {
-    console.log('[Claude Tuner] Account deleted. Skipping collection.');
+    console.log('[Claude Monitor] Account deleted. Skipping collection.');
     return { success: false, account_deleted: true };
   }
 
@@ -246,7 +246,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
   if (!force) {
     const _pauseCadence = await getCadence();
     if (isCollectionPaused(_pauseCadence)) {
-      console.log('[Claude Tuner] Collection paused by server (provider incident). Skipping.');
+      console.log('[Claude Monitor] Collection paused by server (provider incident). Skipping.');
       return { success: false, paused: true };
     }
   }
@@ -281,7 +281,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
 
     // Detect plan for each org (skip API-only orgs)
     const orgPlans = orgList.map(o => { const p = detectPlan(o); return `${o.name}(${p})${p === 'API' ? '[skip]' : ''}`; });
-    console.log(`[Claude Tuner] ${orgList.length} orgs:`, orgPlans.join(' | '));
+    console.log(`[Claude Monitor] ${orgList.length} orgs:`, orgPlans.join(' | '));
     const planScoreMap = { 'Max 20x': 7, 'Team Premium': 6, 'Max 5x': 5, 'Team Standard': 4, 'Max': 3.5, 'Enterprise': 3, 'Team': 2.5, 'Team Tier 2': 2.5, 'Pro': 2, 'Free': 1 };
 
     // === Primary org selection: manual > cookie > plan score fallback ===
@@ -301,7 +301,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
         const { collectedOrgs = [] } = await chrome.storage.local.get({ collectedOrgs: [] });
         const isExternal = collectedOrgs.some(o => o.uuid === config.selectedOrgId && o.provider && o.provider !== 'claude');
         if (!isExternal) {
-          console.warn('[Claude Tuner] selectedOrgId not found, resetting to auto');
+          console.warn('[Claude Monitor] selectedOrgId not found, resetting to auto');
           await chrome.storage.sync.set({ selectedOrgId: null });
         }
       }
@@ -316,10 +316,10 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
           bestPlan = detectPlan(cookieOrg);
           selectionMethod = 'cookie';
         } else {
-          console.log(`[Claude Tuner] lastActiveOrg cookie (${cookieOrgId}) not in org list or is API, falling back`);
+          console.log(`[Claude Monitor] lastActiveOrg cookie (${cookieOrgId}) not in org list or is API, falling back`);
         }
       } else {
-        console.log('[Claude Tuner] lastActiveOrg cookie not found, falling back to plan scoring');
+        console.log('[Claude Monitor] lastActiveOrg cookie not found, falling back to plan scoring');
       }
     }
 
@@ -341,7 +341,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
       selectionMethod = 'score';
     }
 
-    console.log(`[Claude Tuner] Primary org: ${bestOrg?.name} (${bestPlan}) [${selectionMethod}]`);
+    console.log(`[Claude Monitor] Primary org: ${bestOrg?.name} (${bestPlan}) [${selectionMethod}]`);
     // Save auto-selected org info for options page display
     if (bestOrg && selectionMethod !== 'manual') {
       await chrome.storage.local.set({ autoSelectedOrg: { name: bestOrg.name, plan: bestPlan, uuid: bestOrg.uuid } });
@@ -378,7 +378,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
       if (acctCacheValid) {
         if (userEmail === 'unknown' && cache.email) userEmail = cache.email;
         seatTier = cache.seatTier || null;
-        console.log('[Claude Tuner] Account (cached):', cache.email, 'seat:', seatTier);
+        console.log('[Claude Monitor] Account (cached):', cache.email, 'seat:', seatTier);
       } else {
         try {
           _ts = performance.now();
@@ -400,17 +400,17 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
           }
           const acctName = acct?.full_name || acct?.display_name || '';
           await chrome.storage.local.set({ accountCache: { email: acctEmail, name: acctName, seatTier, orgUuid: bestOrgUuid, allSeatTiers, ts: Date.now() } });
-          console.log('[Claude Tuner] Account API:', acctEmail, 'seat:', seatTier, 'org:', bestOrgUuid);
+          console.log('[Claude Monitor] Account API:', acctEmail, 'seat:', seatTier, 'org:', bestOrgUuid);
           // Parse grove_enabled from the same response (no extra API call needed)
           const groveNeedsFresh = force || !groveC || (Date.now() - groveC.ts) >= GROVE_CACHE_TTL;
           if (groveNeedsFresh && acct?.settings != null && typeof acct.settings === 'object' && 'grove_enabled' in acct.settings) {
             groveEnabled = acct.settings.grove_enabled === true ? true : acct.settings.grove_enabled === false ? false : null;
             groveDetected = true;
             saveGroveCache(groveEnabled, true);
-            console.log('[Claude Tuner] grove from account API:', groveEnabled);
+            console.log('[Claude Monitor] grove from account API:', groveEnabled);
           }
         } catch (e) {
-          console.warn('[Claude Tuner] Account API failed:', e.message);
+          console.warn('[Claude Monitor] Account API failed:', e.message);
           if (cache) {
             if (userEmail === 'unknown' && cache.email) userEmail = cache.email;
             seatTier = cache.seatTier || null;
@@ -423,7 +423,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
       if (groveCacheValid) {
         groveEnabled = groveC.value ?? null;
         groveDetected = groveC.detected ?? false;
-        console.log('[Claude Tuner] grove (cached):', groveEnabled, 'detected:', groveDetected);
+        console.log('[Claude Monitor] grove (cached):', groveEnabled, 'detected:', groveDetected);
       } else if (!groveDetected) {
         // Skip if already parsed from account API above
         try {
@@ -468,7 +468,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
               if (gr.value != null) groveEnabled = gr.value;
             }
             saveGroveCache(groveEnabled, groveDetected);
-            console.log('[Claude Tuner] grove API:', groveEnabled, 'detected:', groveDetected);
+            console.log('[Claude Monitor] grove API:', groveEnabled, 'detected:', groveDetected);
           } else {
             // No tabs available — cookie fallback
             const acctNo = await fetchWithCookies('https://claude.ai/api/account');
@@ -477,11 +477,11 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
               groveEnabled = parsed;
               groveDetected = true;
               saveGroveCache(groveEnabled, true);
-              console.log('[Claude Tuner] grove no-tab cookie fallback:', groveEnabled);
+              console.log('[Claude Monitor] grove no-tab cookie fallback:', groveEnabled);
             }
           }
         } catch (ge) {
-          console.warn('[Claude Tuner] grove executeScript failed, trying cookie fallback:', ge.message);
+          console.warn('[Claude Monitor] grove executeScript failed, trying cookie fallback:', ge.message);
           // Cookie-based fallback: when executeScript fails (insufficient permissions, etc.)
           try {
             const acct = await fetchWithCookies('https://claude.ai/api/account');
@@ -490,10 +490,10 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
               groveEnabled = parsed;
               groveDetected = true;
               saveGroveCache(groveEnabled, true);
-              console.log('[Claude Tuner] grove cookie fallback:', groveEnabled, 'detected:', groveDetected);
+              console.log('[Claude Monitor] grove cookie fallback:', groveEnabled, 'detected:', groveDetected);
             }
           } catch (ce) {
-            console.warn('[Claude Tuner] grove cookie fallback failed:', ce.message);
+            console.warn('[Claude Monitor] grove cookie fallback failed:', ce.message);
             if (groveC) {
               groveEnabled = groveC.value ?? null;
               groveDetected = groveC.detected ?? false;
@@ -507,9 +507,9 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
     // Refine plan based on seat tier
     if (bestPlan === 'Team' && seatTier) {
       bestPlan = SEAT_TIER_MAP[seatTier] || 'Team Standard';
-      console.log(`[Claude Tuner] Team seat_tier: ${seatTier} → ${bestPlan}`);
+      console.log(`[Claude Monitor] Team seat_tier: ${seatTier} → ${bestPlan}`);
     } else if (bestPlan === 'Enterprise' && seatTier) {
-      console.log(`[Claude Tuner] Enterprise seat_tier: ${seatTier}`);
+      console.log(`[Claude Monitor] Enterprise seat_tier: ${seatTier}`);
     }
 
     // Check for non-monitorable orgs (API-only)
@@ -528,12 +528,12 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
       if (!intervalExplicitlySet) {
         const currentInterval = config.intervalMinutes || DEFAULT_INTERVAL_MINUTES;
         if (bestPlan === 'Free' && currentInterval !== FREE_PLAN_INTERVAL_MINUTES) {
-          console.log(`[Claude Tuner] Free plan: poll interval ${currentInterval}m → ${FREE_PLAN_INTERVAL_MINUTES}m`);
+          console.log(`[Claude Monitor] Free plan: poll interval ${currentInterval}m → ${FREE_PLAN_INTERVAL_MINUTES}m`);
           await chrome.storage.sync.set({ intervalMinutes: FREE_PLAN_INTERVAL_MINUTES });
           chrome.alarms.create(ALARM_NAME, { delayInMinutes: FREE_PLAN_INTERVAL_MINUTES, periodInMinutes: FREE_PLAN_INTERVAL_MINUTES });
         } else if (bestPlan !== 'Free' && currentInterval === FREE_PLAN_INTERVAL_MINUTES) {
           const restoreInterval = (await chrome.storage.local.get('serverPollInterval')).serverPollInterval || DEFAULT_INTERVAL_MINUTES;
-          console.log(`[Claude Tuner] Upgraded from Free: poll interval ${FREE_PLAN_INTERVAL_MINUTES}m → ${restoreInterval}m`);
+          console.log(`[Claude Monitor] Upgraded from Free: poll interval ${FREE_PLAN_INTERVAL_MINUTES}m → ${restoreInterval}m`);
           await chrome.storage.sync.set({ intervalMinutes: restoreInterval });
           chrome.alarms.create(ALARM_NAME, { delayInMinutes: restoreInterval, periodInMinutes: restoreInterval });
         }
@@ -549,7 +549,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
       usageData = await fetchClaudeApi(`/api/organizations/${orgId}/usage`);
       _timings['4_usage'] = Math.round(performance.now() - _ts);
     } catch (e) {
-      console.warn(`[Claude Tuner] Usage fetch failed for ${bestOrg.name}: ${e.message}`);
+      console.warn(`[Claude Monitor] Usage fetch failed for ${bestOrg.name}: ${e.message}`);
       if (e.message && e.message.includes('err_rate_limit')) {
         throw new Error('err_rate_limit');
       }
@@ -559,7 +559,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
     }
 
     const plan = bestPlan;
-    console.log(`[Claude Tuner] User: ${userEmail}, Plan: ${plan}, UsageOrg: ${org.name} (${orgId})`);
+    console.log(`[Claude Monitor] User: ${userEmail}, Plan: ${plan}, UsageOrg: ${org.name} (${orgId})`);
 
     // 2-1. Fetch subscription info (renewal date, pending plan changes)
     // Team/Enterprise can't access subscription_details (403) — only try personal orgs
@@ -614,7 +614,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
 
     // 4. Send to server (local save only when skipServer is true)
     if (skipServer) {
-      console.log('[Claude Tuner] Local-only collection (boost mode)');
+      console.log('[Claude Monitor] Local-only collection (boost mode)');
       await setStatus({
         success: true,
         timestamp: Date.now(),
@@ -682,7 +682,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
       { force: force || needHistory, sendFloorMs: primaryCadence.sendFloorMs, heartbeatFloorMs: primaryCadence.heartbeatFloorMs },
     );
     if (!primaryDue) {
-      console.log(`[Claude Tuner] Primary delta-gate skip (${primaryGateReason})`);
+      console.log(`[Claude Monitor] Primary delta-gate skip (${primaryGateReason})`);
     } else {
       // Advance state optimistically so lastValues/lastPollAt track the last
       // *sent* values/time (the gate above depends on this). On a TRANSIENT POST
@@ -739,7 +739,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
         // Keep existing token-clear fallback (race-safe: only clears if unchanged).
         const cleared = await clearExtTokenIfMatches(sentToken);
         if (cleared) {
-          console.log('[Claude Tuner] ext_token cleared (403). Will re-auth on next cycle.');
+          console.log('[Claude Monitor] ext_token cleared (403). Will re-auth on next cycle.');
         }
         return;
       }
@@ -748,14 +748,14 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
         // Race-safe: only clear if the token we sent is still the stored one.
         const cleared = await clearExtTokenIfMatches(sentToken);
         if (cleared) {
-          console.log('[Claude Tuner] ext_token cleared (401). Will re-auth on next cycle.');
+          console.log('[Claude Monitor] ext_token cleared (401). Will re-auth on next cycle.');
         }
         return;
       }
       if (response.status === 410) {
         const errData = await response.json().catch(() => ({}));
         if (errData.account_deleted) {
-          console.log('[Claude Tuner] Account has been deleted. Stopping collection.');
+          console.log('[Claude Monitor] Account has been deleted. Stopping collection.');
           await chrome.storage.local.set({ account_deleted: true });
           chrome.alarms.clear(ALARM_NAME);
           chrome.action.setBadgeText({ text: '!' });
@@ -764,7 +764,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
         }
       }
       if (!response.ok) {
-        console.warn(`[Claude Tuner] Server POST failed: ${response.status} ${response.statusText}`);
+        console.warn(`[Claude Monitor] Server POST failed: ${response.status} ${response.statusText}`);
         await rollbackPrimary(); // transient (e.g. 5xx) → let the next tick retry
         // 5xx → server/D1 overload: extend the shared backoff so the next tick
         // doesn't immediately re-hammer a saturated server (#228 retry-on-5xx).
@@ -773,7 +773,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
       }
       const result = await response.json();
       await noteServerSuccess(); // confirmed-healthy POST clears any backoff
-      console.log(`[Claude Tuner] Snapshot sent: ${result.success ? 'ok' : 'fail'}${result.skipped ? ' (skipped)' : ''}`);
+      console.log(`[Claude Monitor] Snapshot sent: ${result.success ? 'ok' : 'fail'}${result.skipped ? ' (skipped)' : ''}`);
 
       // Claude accepted (email matched the token identity) — clear any prior
       // email-mismatch warning so the popup banner disappears once collection works.
@@ -792,7 +792,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
         if (!intervalExplicitlySet && bestPlan !== 'Free') {
           const currentInterval = config.intervalMinutes || DEFAULT_INTERVAL_MINUTES;
           if (serverInterval !== currentInterval) {
-            console.log(`[Claude Tuner] Updating poll interval: ${currentInterval}m → ${serverInterval}m (server)`);
+            console.log(`[Claude Monitor] Updating poll interval: ${currentInterval}m → ${serverInterval}m (server)`);
             await chrome.storage.sync.set({ intervalMinutes: serverInterval });
             chrome.alarms.create(ALARM_NAME, { delayInMinutes: serverInterval, periodInMinutes: serverInterval });
           }
@@ -819,16 +819,16 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
         const po = result.plan_order;
         const { completedPlanOrder: cpo } = await chrome.storage.local.get('completedPlanOrder');
         if (cpo && cpo.order_id === po.order_id) {
-          console.log(`[Claude Tuner] Plan order #${po.order_id} already completed, skipping`);
+          console.log(`[Claude Monitor] Plan order #${po.order_id} already completed, skipping`);
         } else {
-        console.log(`[Claude Tuner] Plan order received: #${po.order_id} ${po.from_plan} → ${po.to_plan} (auto_approve=${po.auto_approve})`);
+        console.log(`[Claude Monitor] Plan order received: #${po.order_id} ${po.from_plan} → ${po.to_plan} (auto_approve=${po.auto_approve})`);
         await chrome.storage.local.set({ pendingPlanOrder: po });
         if (po.auto_approve) {
-          console.log('[Claude Tuner] Auto-approving plan order');
+          console.log('[Claude Monitor] Auto-approving plan order');
           try {
             await acceptPlanOrder(config, po, userEmail, { auto: true });
           } catch (e) {
-            console.error('[Claude Tuner] Auto plan order failed:', e.message);
+            console.error('[Claude Monitor] Auto plan order failed:', e.message);
             await reportPlanOrderResult(config, po.order_id, userEmail, 'accepted', 'failed', e.message);
           }
         } else {
@@ -881,14 +881,14 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
               }
             }
           } catch (e) {
-            console.warn('[Claude Tuner] Failed to fetch /api/me for history bootstrap:', e.message);
+            console.warn('[Claude Monitor] Failed to fetch /api/me for history bootstrap:', e.message);
           }
         }
         // (historyEmptyUntil cooldown is now claimed at POST-attempt time above,
         // so it's set on success/non-OK/throw alike — no need to set it here.)
       }
     }).catch((e) => {
-      console.warn('[Claude Tuner] Server POST fire-and-forget error:', e.message);
+      console.warn('[Claude Monitor] Server POST fire-and-forget error:', e.message);
       rollbackPrimary().catch(() => {}); // transient network failure → retry next tick
       noteServerFailure().catch(() => {}); // network failure → extend shared backoff
     });
@@ -987,7 +987,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
           }
         }
       } catch (e) {
-        console.warn('[Claude Tuner] selected_orgs migration failed (will retry next cycle):', e.message);
+        console.warn('[Claude Monitor] selected_orgs migration failed (will retry next cycle):', e.message);
       }
 
       // Determine target orgs: exclude API + exclude Free if multi-org.
@@ -1118,7 +1118,7 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
           // Save extra org history too (for per-org view)
           await appendUsageHistory(buildHistoryPoint(extraSnapshot, extraPlan));
           const tierTag = orgPollState[extraOrg.uuid].tier !== 'active' ? ` [${orgPollState[extraOrg.uuid].tier}]` : '';
-          console.log(`[Claude Tuner] Extra org snapshot: ${extraOrg.name} (${extraPlan})${tierTag}${extraChanged ? '' : ' [heartbeat]'}`);
+          console.log(`[Claude Monitor] Extra org snapshot: ${extraOrg.name} (${extraPlan})${tierTag}${extraChanged ? '' : ' [heartbeat]'}`);
 
           // Delta-gated server POST. Skip unchanged heartbeats the server would
           // only dedup; local history above is always kept.
@@ -1153,23 +1153,23 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
               // 5xx/network → transient, roll back to retry. 4xx (401/403/410) →
               // persistent; leave advanced so we back off, not hammer.
               if (r && !r.ok) {
-                console.warn(`[Claude Tuner] Extra org ${extraOrg.name} server: ${r.status}`);
+                console.warn(`[Claude Monitor] Extra org ${extraOrg.name} server: ${r.status}`);
                 if (r.status >= 500) { rollbackExtra(); noteServerFailure().catch(() => {}); }
               } else if (r && r.ok) {
                 noteServerSuccess().catch(() => {}); // healthy POST clears backoff
               }
             }).catch(e => {
-              console.warn(`[Claude Tuner] Extra org ${extraOrg.name} POST failed:`, e.message);
+              console.warn(`[Claude Monitor] Extra org ${extraOrg.name} POST failed:`, e.message);
               rollbackExtra();
               noteServerFailure().catch(() => {}); // network failure → extend shared backoff
             });
           } else {
-            console.log(`[Claude Tuner] Extra org ${extraOrg.name} delta-gate skip (${extraGateReason})`);
+            console.log(`[Claude Monitor] Extra org ${extraOrg.name} delta-gate skip (${extraGateReason})`);
           }
         } catch (e) {
           // 403/401 = removed from org, 429 = rate limited, etc. — continue collecting other orgs
           failedOrgs.push({ uuid: extraOrg.uuid, name: extraOrg.name, reason: e.message });
-          console.warn(`[Claude Tuner] Extra org ${extraOrg.name} failed:`, e.message);
+          console.warn(`[Claude Monitor] Extra org ${extraOrg.name} failed:`, e.message);
         }
       }
 
@@ -1183,10 +1183,10 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
       await chrome.storage.local.set({ orgPollState });
 
       if (skippedOrgs.length > 0) {
-        console.log(`[Claude Tuner] Adaptive skip: ${skippedOrgs.map(s => `${s.name}(${s.tier})`).join(', ')}`);
+        console.log(`[Claude Monitor] Adaptive skip: ${skippedOrgs.map(s => `${s.name}(${s.tier})`).join(', ')}`);
       }
       if (failedOrgs.length > 0) {
-        console.log(`[Claude Tuner] Multi-org: ${successOrgs.length} ok, ${failedOrgs.length} failed:`,
+        console.log(`[Claude Monitor] Multi-org: ${successOrgs.length} ok, ${failedOrgs.length} failed:`,
           failedOrgs.map(f => `${f.name}(${f.reason})`).join(', '));
       }
 
@@ -1224,12 +1224,12 @@ async function collectAndSendImpl({ force = false, skipServer = false } = {}) {
     }
 
     _timings['TOTAL'] = Math.round(performance.now() - _t0);
-    console.log(`[Claude Tuner] ⏱️ Timing (ms):`, JSON.stringify(_timings));
+    console.log(`[Claude Monitor] ⏱️ Timing (ms):`, JSON.stringify(_timings));
     return { success: true, snapshot };
 
   } catch (error) {
     const errorMsg = error.message || 'Unknown error';
-    console.error('[Claude Tuner] Collection failed:', errorMsg);
+    console.error('[Claude Monitor] Collection failed:', errorMsg);
     const prevStatus = await getLastStatus();
     await setStatus({
       error: errorMsg,

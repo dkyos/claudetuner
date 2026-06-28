@@ -1,4 +1,4 @@
-// Centralized configuration for the Claude Tuner extension (classic script shared
+// Centralized configuration for the Claude Monitor extension (classic script shared
 // by content scripts + popup + options as the global CT_CONFIG).
 //
 // ⚙️ SERVER ADDRESS — to change host/port: edit DEFAULT_SERVER_URL + SITE_URL here

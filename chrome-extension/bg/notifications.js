@@ -203,7 +203,7 @@ export async function scheduleWeeklyReport() {
     delayInMinutes: delayMs / 60000,
     periodInMinutes: 7 * 24 * 60, // Repeat weekly
   });
-  console.log(`[Claude Tuner] Weekly report scheduled for ${nextMonday.toISOString()}`);
+  console.log(`[Claude Monitor] Weekly report scheduled for ${nextMonday.toISOString()}`);
 }
 
 export async function sendWeeklyReport() {

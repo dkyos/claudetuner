@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Claude Tuner, please report it responsibly.
+If you discover a security vulnerability in Claude Monitor, please report it responsibly.
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
@@ -20,13 +20,13 @@ Instead, please use [GitHub Security Advisories](https://github.com/chaehyun2/cl
 The following are in scope:
 
 - Extension source code (this repository)
-- Data transmitted between the extension and the Claude Tuner API
+- Data transmitted between the extension and the Claude Monitor API
 - Authentication and authorization flows
 - Cross-site scripting (XSS) in extension UI
 
 The following are out of scope:
 
-- The Claude Tuner cloud backend (upstream). This fork's local `server/` runs only on your own machine.
+- The Claude Monitor cloud backend (upstream). This fork's local `server/` runs only on your own machine.
 - Claude.ai itself
 - Chrome Web Store infrastructure
 

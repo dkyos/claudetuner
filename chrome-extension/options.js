@@ -73,7 +73,7 @@ async function _authedFetch(cfg, url, options = {}) {
       await chrome.storage.local.remove('extToken');
       try {
         const path = new URL(url).pathname;
-        console.log(`[Claude Tuner] ext_token cleared (401) at ${path}`);
+        console.log(`[Claude Monitor] ext_token cleared (401) at ${path}`);
       } catch { /* ignore */ }
     }
   }

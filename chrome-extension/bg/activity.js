@@ -21,7 +21,7 @@ export async function setActivityState(state) {
   const prev = _activityState;
   _activityState = state;
   await chrome.storage.local.set({ _activityState: state });
-  console.log(`[Claude Tuner] Activity: ${prev} → ${state}`);
+  console.log(`[Claude Monitor] Activity: ${prev} → ${state}`);
   return true; // changed
 }
 

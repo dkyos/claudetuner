@@ -83,9 +83,9 @@ const TRANSLATIONS = {
     'error_banner_hint': '에서 로그인 상태를 확인해주세요.',
     'open_claude': 'Claude.ai 열기',
     'email_mismatch_title': '⚠️ Claude 사용량이 수집되지 않고 있어요',
-    'email_mismatch_msg': 'Claude.ai 로그인 계정({0})이 Claude Tuner 로그인 계정과 달라 Claude 사용량이 수집되지 않습니다.',
-    'email_mismatch_msg_noemail': 'Claude.ai 로그인 계정이 Claude Tuner 로그인 계정과 달라 Claude 사용량이 수집되지 않습니다.',
-    'email_mismatch_hint': '에 Claude Tuner와 같은 이메일로 로그인하면 수집이 시작됩니다.',
+    'email_mismatch_msg': 'Claude.ai 로그인 계정({0})이 Claude Monitor 로그인 계정과 달라 Claude 사용량이 수집되지 않습니다.',
+    'email_mismatch_msg_noemail': 'Claude.ai 로그인 계정이 Claude Monitor 로그인 계정과 달라 Claude 사용량이 수집되지 않습니다.',
+    'email_mismatch_hint': '에 Claude Monitor와 같은 이메일로 로그인하면 수집이 시작됩니다.',
     // Status banner (6-tier pace)
     'pace_comfortable': '여유 — 마음껏 사용하세요!',
     'pace_ontrack': '순조로움 — 적절한 페이스입니다',
@@ -196,7 +196,7 @@ const TRANSLATIONS = {
     'data_days': '데이터 수집 중 ({0}일)',
     'downgrade_cancelled': '다운그레이드가 취소되었습니다',
     // Onboarding
-    'ob_title': 'Claude Tuner에 오신 걸 환영합니다!',
+    'ob_title': 'Claude Monitor에 오신 걸 환영합니다!',
     'ob_title_team': '{0} 팀에 오신 것을 환영합니다!',
     'ob_desc': 'Claude · ChatGPT · Gemini 사용량을 실시간으로 모니터링하고 최적화하세요.',
     'ob_step1_title': '사용 중인 AI 서비스에 로그인하세요',
@@ -300,7 +300,7 @@ const TRANSLATIONS = {
     'fm_ref': '참고',
     'fm_reason': '사유보기',
     // review nudge
-    'review_nudge_text': 'ClaudeTuner가 도움이 되셨나요?',
+    'review_nudge_text': 'ClaudeMonitor가 도움이 되셨나요?',
     'review_nudge_cta': '리뷰 남기기',
     // recommendation feedback
     'rec_fb_question': '이 추천이 도움이 되었나요?',
@@ -452,9 +452,9 @@ const TRANSLATIONS = {
     'error_banner_hint': 'to check your login status.',
     'open_claude': 'Open Claude.ai',
     'email_mismatch_title': '⚠️ Claude usage isn\'t being collected',
-    'email_mismatch_msg': 'Your Claude.ai account ({0}) is different from your Claude Tuner account, so Claude usage cannot be collected.',
-    'email_mismatch_msg_noemail': 'Your Claude.ai account is different from your Claude Tuner account, so Claude usage cannot be collected.',
-    'email_mismatch_hint': 'with the same email as Claude Tuner to start collecting.',
+    'email_mismatch_msg': 'Your Claude.ai account ({0}) is different from your Claude Monitor account, so Claude usage cannot be collected.',
+    'email_mismatch_msg_noemail': 'Your Claude.ai account is different from your Claude Monitor account, so Claude usage cannot be collected.',
+    'email_mismatch_hint': 'with the same email as Claude Monitor to start collecting.',
     // Status banner (6-tier pace)
     'pace_comfortable': 'Comfortable — use freely!',
     'pace_ontrack': 'On Track — sustainable pace',
@@ -564,7 +564,7 @@ const TRANSLATIONS = {
     'data_days': 'Collecting data ({0} days)',
     'downgrade_cancelled': 'Downgrade cancelled',
     // Onboarding
-    'ob_title': 'Welcome to Claude Tuner!',
+    'ob_title': 'Welcome to Claude Monitor!',
     'ob_title_team': 'Welcome to {0}!',
     'ob_desc': 'Monitor and optimize your Claude, ChatGPT & Gemini usage in real time.',
     'ob_step1_title': 'Sign in to the AI service you use',
@@ -589,7 +589,7 @@ const TRANSLATIONS = {
     'footer_settings': 'Settings',
     'gauge_predict_collecting': 'Estimating...',
     // Pin hint
-    'pin_hint_text_html': 'Click the {pin} <b>button</b> above to pin Claude Tuner to your toolbar for quick access',
+    'pin_hint_text_html': 'Click the {pin} <b>button</b> above to pin Claude Monitor to your toolbar for quick access',
     'pin_hint_before': 'Hidden',
     'pin_hint_after': 'One click away',
     // Plan order
@@ -667,7 +667,7 @@ const TRANSLATIONS = {
     'fm_ref': 'Ref',
     'fm_reason': 'Details',
     // review nudge
-    'review_nudge_text': 'Enjoying ClaudeTuner?',
+    'review_nudge_text': 'Enjoying ClaudeMonitor?',
     'review_nudge_cta': 'Rate us ⭐',
     // recommendation feedback
     'rec_fb_question': 'Was this recommendation helpful?',

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="chrome-extension/icons/icon128.png" alt="Claude Tuner" width="80" />
+  <img src="chrome-extension/icons/icon128.png" alt="Claude Monitor" width="80" />
 </p>
 
-<h1 align="center">Claude Tuner</h1>
+<h1 align="center">Claude Monitor</h1>
 
 <p align="center">
   Track your Claude usage limits in real time — across Chat, Code, Cowork, and Design.
@@ -24,9 +24,9 @@
   <img src="docs/screenshots/dashboard-top.png" alt="Dashboard — usage gauges, plan fitness, and weekly trend" width="720" />
 </p>
 
-## Why Claude Tuner?
+## Why Claude Monitor?
 
-Claude's rate limits are opaque — you don't know how much you've used, when it resets, or whether your plan is right for you. Claude Tuner fixes that.
+Claude's rate limits are opaque — you don't know how much you've used, when it resets, or whether your plan is right for you. Claude Monitor fixes that.
 
 - **See your limits** — live 5h / 7d usage gauges with reset countdowns
 - **Predict resets** — know if you'll hit the cap before the window rolls over
@@ -81,7 +81,7 @@ Claude's rate limits are opaque — you don't know how much you've used, when it
 <summary><b>Plan Fitness Score</b></summary>
 
 - At-a-glance fitness rating for your subscription
-- Percentile ranking among Claude Tuner users
+- Percentile ranking among Claude Monitor users
 - Usage distribution histogram
 </details>
 
@@ -148,7 +148,7 @@ git clone https://github.com/chaehyun2/claudetuner.git
 ## How It Works
 
 ```
-You ──→ Claude.ai ──→ Claude Tuner extension ──→ Local server (server/)
+You ──→ Claude.ai ──→ Claude Monitor extension ──→ Local server (server/)
                         (reads usage data)         localhost:3000 (history & analytics)
                               │
                               ▼
@@ -244,4 +244,4 @@ See [SECURITY.md](SECURITY.md).
 
 ---
 
-<sub>Claude Tuner is not affiliated with or endorsed by Anthropic. Token limits are community-observed estimates, not official figures.</sub>
+<sub>Claude Monitor is not affiliated with or endorsed by Anthropic. Token limits are community-observed estimates, not official figures.</sub>

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Claude Tuner is a Chrome MV3 extension that tracks Claude.ai usage limits (5h / 7d
+Claude Monitor is a Chrome MV3 extension that tracks Claude.ai usage limits (5h / 7d
 windows) and optionally ChatGPT/Gemini — surfacing live gauges, trend charts, reset
 predictions, alerts, and plan-fitness/upgrade recommendations.
 

@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "Claude Tuner — Local Server",
-  description: "Local drop-in backend for the Claude Tuner extension",
+  title: "Claude Monitor — Local Server",
+  description: "Local drop-in backend for the Claude Monitor extension",
 };
 
 export default function RootLayout({

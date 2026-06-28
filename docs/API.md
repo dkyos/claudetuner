@@ -1,4 +1,4 @@
-# Claude Tuner API (Local Server)
+# Claude Monitor API (Local Server)
 
 This fork runs against a **personal local backend** at `http://localhost:3000` — the
 `server/` directory in this repo (Next.js App Router + `node:sqlite`). This document

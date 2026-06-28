@@ -1,4 +1,4 @@
-# Contributing to Claude Tuner
+# Contributing to Claude Monitor
 
 Thanks for your interest in contributing! Here's how to get started.
 

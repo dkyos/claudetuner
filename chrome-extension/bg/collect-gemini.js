@@ -50,7 +50,7 @@ export async function collectGemini(force = false) {
     const data = await fetchGeminiRpc('jSf9Qc', '[]');
 
     if (!Array.isArray(data) || !Array.isArray(data[1])) {
-      console.warn('[Claude Tuner] Gemini: unexpected jSf9Qc response');
+      console.warn('[Claude Monitor] Gemini: unexpected jSf9Qc response');
       return { success: false, orgs: [] };
     }
 
@@ -58,7 +58,7 @@ export async function collectGemini(force = false) {
     const windows = data[1];
     const plan = GEMINI_PLAN_MAP[planId] || `Plan ${planId}`;
     if (!GEMINI_PLAN_MAP[planId]) {
-      console.warn(`[Claude Tuner] Gemini: unknown planId ${planId}, using fallback "${plan}"`);
+      console.warn(`[Claude Monitor] Gemini: unknown planId ${planId}, using fallback "${plan}"`);
     }
 
     // Parse windows: each entry is [used, percent, windowType, [[resetSec, resetNano]]]
@@ -88,9 +88,9 @@ export async function collectGemini(force = false) {
       const userInfo = await getGeminiUserInfo();
       email = userInfo.email;
       googleId = userInfo.googleId;
-      if (!email && !googleId) console.warn('[Claude Tuner] Gemini: could not extract user info from page');
+      if (!email && !googleId) console.warn('[Claude Monitor] Gemini: could not extract user info from page');
     } catch (e) {
-      console.warn('[Claude Tuner] Gemini user info failed:', e.message);
+      console.warn('[Claude Monitor] Gemini user info failed:', e.message);
     }
 
     const accountId = googleId || 'gemini-unknown';
@@ -133,17 +133,17 @@ export async function collectGemini(force = false) {
       // Commit only on a confirmed-successful POST so a failed send leaves the
       // gate unadvanced and the next cycle retries (no silent drop of a change).
       const res = await sendGeminiSnapshot(org, email, plan).catch(e => {
-        console.warn('[Claude Tuner] Gemini snapshot send failed:', e.message);
+        console.warn('[Claude Monitor] Gemini snapshot send failed:', e.message);
         return null;
       });
       if (res) await gate.commit();
     } else {
-      console.log(`[Claude Tuner] Gemini delta-gate skip (${gate.reason})`);
+      console.log(`[Claude Monitor] Gemini delta-gate skip (${gate.reason})`);
     }
 
     return { success: true, orgs: [org] };
   } catch (e) {
-    console.warn('[Claude Tuner] Gemini collection failed:', e.message);
+    console.warn('[Claude Monitor] Gemini collection failed:', e.message);
     return { success: false, orgs: [] };
   }
 }
@@ -163,7 +163,7 @@ async function sendGeminiSnapshot(org, geminiEmail, plan) {
   });
   const serverEmail = accountCache?.email || independentAccount?.email || geminiEmail;
   if (!serverEmail) {
-    console.warn('[Claude Tuner] Gemini snapshot skipped: no email (no Claude/independent account and no Gemini email)');
+    console.warn('[Claude Monitor] Gemini snapshot skipped: no email (no Claude/independent account and no Gemini email)');
     return;
   }
 

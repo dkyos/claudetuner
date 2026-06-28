@@ -41,7 +41,7 @@ export default function Page() {
   return (
     <main style={{ maxWidth: 920, margin: "0 auto", padding: "32px 20px" }}>
       <h1 style={{ fontSize: 20, marginBottom: 4 }}>
-        Claude Tuner — Local Server
+        Claude Monitor — Local Server
       </h1>
       <p style={{ color: "#9ca3af", marginTop: 0 }}>
         {total} snapshot(s) stored · API at <code>/api/snapshots</code>. The

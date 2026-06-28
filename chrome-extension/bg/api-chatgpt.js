@@ -14,11 +14,11 @@ export async function fetchChatGPTApi(path, options = {}) {
       return await fetchChatGPTViaTab(tabs[0].id, fullUrl);
     } catch (tabError) {
       tabErrorMsg = tabError.message;
-      console.warn('[Claude Tuner] ChatGPT tab fetch failed, trying cookie fallback:', tabErrorMsg);
+      console.warn('[Claude Monitor] ChatGPT tab fetch failed, trying cookie fallback:', tabErrorMsg);
     }
   } else {
     tabErrorMsg = 'No chatgpt.com tab';
-    console.log('[Claude Tuner] No ChatGPT tab, using cookie fallback');
+    console.log('[Claude Monitor] No ChatGPT tab, using cookie fallback');
   }
 
   // Fallback: cookie-based direct call

@@ -30,7 +30,7 @@ export async function collectChatGPT(force = false) {
     const usage = await fetchChatGPTApi('/backend-api/wham/usage');
 
     if (!usage?.rate_limit) {
-      console.warn('[Claude Tuner] ChatGPT: unexpected /wham/usage response');
+      console.warn('[Claude Monitor] ChatGPT: unexpected /wham/usage response');
       return { success: false, orgs: [] };
     }
 
@@ -78,17 +78,17 @@ export async function collectChatGPT(force = false) {
       // Commit only on a confirmed-successful POST so a failed send leaves the
       // gate unadvanced and the next cycle retries (no silent drop of a change).
       const res = await sendChatGPTSnapshot(org, email, plan).catch(e => {
-        console.warn('[Claude Tuner] ChatGPT snapshot send failed:', e.message);
+        console.warn('[Claude Monitor] ChatGPT snapshot send failed:', e.message);
         return null;
       });
       if (res) await gate.commit();
     } else {
-      console.log(`[Claude Tuner] ChatGPT delta-gate skip (${gate.reason})`);
+      console.log(`[Claude Monitor] ChatGPT delta-gate skip (${gate.reason})`);
     }
 
     return { success: true, orgs: [org] };
   } catch (e) {
-    console.warn('[Claude Tuner] ChatGPT collection failed:', e.message);
+    console.warn('[Claude Monitor] ChatGPT collection failed:', e.message);
     return { success: false, orgs: [] };
   }
 }
@@ -110,7 +110,7 @@ async function sendChatGPTSnapshot(org, chatgptEmail, plan) {
   });
   const serverEmail = accountCache?.email || independentAccount?.email || chatgptEmail;
   if (!serverEmail) {
-    console.warn('[Claude Tuner] ChatGPT snapshot skipped: no email (no Claude/independent account and no ChatGPT email)');
+    console.warn('[Claude Monitor] ChatGPT snapshot skipped: no email (no Claude/independent account and no ChatGPT email)');
     return;
   }
 

@@ -1,4 +1,4 @@
-// Claude Tuner — ChatGPT Input Usage Strip
+// Claude Monitor — ChatGPT Input Usage Strip
 // Injects a single compact usage line as a full-width row directly BELOW the
 // composer box (a sibling of the composer form, like claude.ai's usage row).
 // This avoids fighting the composer's internal CSS grid (which moves/auto-places

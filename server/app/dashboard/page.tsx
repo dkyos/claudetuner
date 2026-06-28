@@ -127,7 +127,7 @@ export default async function Dashboard({
   if (!email) {
     return (
       <main style={{ maxWidth: 980, margin: "0 auto", padding: "40px 20px" }}>
-        <h1 style={{ fontSize: 22 }}>ClaudeTuner — 로컬 대시보드</h1>
+        <h1 style={{ fontSize: 22 }}>ClaudeMonitor — 로컬 대시보드</h1>
         <p style={{ color: "#9ca3af" }}>
           아직 수집된 데이터가 없습니다. 확장을 이 서버로 연결하고 claude.ai에서
           수집이 한 번 이상 실행되면 여기에 추세와 예측이 표시됩니다.
@@ -233,7 +233,7 @@ export default async function Dashboard({
           gap: 8,
         }}
       >
-        <h1 style={{ fontSize: 22, margin: 0 }}>ClaudeTuner — 로컬 대시보드</h1>
+        <h1 style={{ fontSize: 22, margin: 0 }}>ClaudeMonitor — 로컬 대시보드</h1>
         <span style={{ color: "#9ca3af", fontSize: 13 }}>
           {email} · {PROVIDER_LABEL[provider] ?? provider}
           {isClaude && latest?.plan ? ` · ${latest.plan}` : ""}

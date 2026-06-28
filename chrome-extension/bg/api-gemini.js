@@ -18,11 +18,11 @@ export async function fetchGeminiRpc(rpcId, params = '[]') {
       return await fetchGeminiViaTab(tabs[0].id, rpcId, params);
     } catch (tabError) {
       tabErrorMsg = tabError.message;
-      console.warn('[Claude Tuner] Gemini tab fetch failed, trying SW fallback:', tabErrorMsg);
+      console.warn('[Claude Monitor] Gemini tab fetch failed, trying SW fallback:', tabErrorMsg);
     }
   } else {
     tabErrorMsg = 'No gemini.google.com tab';
-    console.log('[Claude Tuner] No Gemini tab, using SW credentials fallback');
+    console.log('[Claude Monitor] No Gemini tab, using SW credentials fallback');
   }
 
   // Fallback: service worker fetch with credentials: 'include'

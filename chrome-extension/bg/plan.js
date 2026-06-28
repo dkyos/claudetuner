@@ -11,7 +11,7 @@ export function setCollectAndSendRef(fn) { _collectAndSendFn = fn; }
 function forceCollect(context) {
   if (_collectAndSendFn) {
     _collectAndSendFn({ force: true }).catch(e =>
-      console.warn(`[Claude Tuner] Force collect after ${context} failed:`, e.message));
+      console.warn(`[Claude Monitor] Force collect after ${context} failed:`, e.message));
   }
 }
 
@@ -63,7 +63,7 @@ export async function fetchSubscriptionInfo(orgUuid) {
       info.paused_until = subDetails.payment_paused_until;
     }
   } else {
-    console.warn(`[Claude Tuner] Subscription details fetch failed for ${orgUuid} (non-critical):`, subResult.reason?.message);
+    console.warn(`[Claude Monitor] Subscription details fetch failed for ${orgUuid} (non-critical):`, subResult.reason?.message);
   }
   if (pausedResult.status === 'fulfilled') {
     const pausedDetails = pausedResult.value;
@@ -141,7 +141,7 @@ export async function reportPlanOrderResult(config, orderId, userEmail, action, 
       body: JSON.stringify({ order_id: orderId, user_email: userEmail, action, result, failure_reason: failureReason }),
     });
   } catch (e) {
-    console.error('[Claude Tuner] Failed to report plan order result:', e.message);
+    console.error('[Claude Monitor] Failed to report plan order result:', e.message);
   }
 }
 
@@ -203,14 +203,14 @@ export async function executePlanChange(recommendation) {
     const orgId = verifyOrg.uuid;
     const currentPlan = detectPlan(verifyOrg);
     if (currentPlan !== fromPlan) {
-      console.log(`[Claude Tuner] Plan changed externally: expected ${fromPlan}, got ${currentPlan}`);
+      console.log(`[Claude Monitor] Plan changed externally: expected ${fromPlan}, got ${currentPlan}`);
       await notifyPlanChange(await bt('opt_already_title'), await bt('opt_already_msg', currentPlan));
       await dismissRecommendationServer();
       return { success: false, error: 'Plan already changed externally' };
     }
 
     const isUpgrade = recommendation.type === 'upgrade';
-    console.log(`[Claude Tuner] Executing ${isUpgrade ? 'upgrade' : 'downgrade'}: ${fromPlan} → ${toPlan}`);
+    console.log(`[Claude Monitor] Executing ${isUpgrade ? 'upgrade' : 'downgrade'}: ${fromPlan} → ${toPlan}`);
 
     if (isUpgrade) {
       const tierMap = { 'Max 5x': '5x', 'Max 20x': '20x' };
@@ -238,7 +238,7 @@ export async function executePlanChange(recommendation) {
     resetIcon();
     await notifyPlanChange(await bt('opt_done_title'), await bt('opt_done_msg', fromPlan, toPlan), 2);
 
-    console.log(`[Claude Tuner] Plan change successful: ${fromPlan} → ${toPlan}`);
+    console.log(`[Claude Monitor] Plan change successful: ${fromPlan} → ${toPlan}`);
 
     // Record state change immediately (skip dedup; server auto-updates last_plan_change_at)
     forceCollect('plan change');
@@ -246,7 +246,7 @@ export async function executePlanChange(recommendation) {
     return { success: true };
 
   } catch (error) {
-    console.error(`[Claude Tuner] Plan change failed:`, error.message);
+    console.error(`[Claude Monitor] Plan change failed:`, error.message);
     await notifyPlanChange(await bt('opt_fail_title'), error.message, 2);
     return { success: false, error: error.message };
   }
@@ -271,7 +271,7 @@ export async function cancelDowngrade() {
       headers: ANTHROPIC_HEADERS,
     });
 
-    console.log(`[Claude Tuner] Downgrade cancelled (was → ${fromPlan})`);
+    console.log(`[Claude Monitor] Downgrade cancelled (was → ${fromPlan})`);
     await notifyPlanChange(await bt('opt_cancel_title'), await bt('opt_cancel_msg', fromPlan), 2);
 
     // Record state change immediately (skip dedup)
@@ -280,7 +280,7 @@ export async function cancelDowngrade() {
     return { success: true, cancelledPlan: fromPlan };
 
   } catch (error) {
-    console.error('[Claude Tuner] Cancel downgrade failed:', error.message);
+    console.error('[Claude Monitor] Cancel downgrade failed:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -300,7 +300,7 @@ export async function downgradeTo(targetPlanApi) {
     // Only downgrade to a plan lower than current
     const targetLabel = Object.entries(PLAN_API_MAP).find(([, v]) => v === targetPlanApi)?.[0] || targetPlanApi;
 
-    console.log(`[Claude Tuner] Direct downgrade: ${currentPlan} → ${targetLabel} (${targetPlanApi})`);
+    console.log(`[Claude Monitor] Direct downgrade: ${currentPlan} → ${targetLabel} (${targetPlanApi})`);
 
     await fetchClaudeApi(`/api/organizations/${orgId}/downgrade_individual_claude_subscription`, {
       method: 'PUT',
@@ -314,7 +314,7 @@ export async function downgradeTo(targetPlanApi) {
     return { success: true, from: currentPlan, to: targetLabel };
 
   } catch (error) {
-    console.error('[Claude Tuner] Direct downgrade failed:', error.message);
+    console.error('[Claude Monitor] Direct downgrade failed:', error.message);
     return { success: false, error: error.message };
   }
 }

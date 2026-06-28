@@ -1,8 +1,8 @@
 {
-  "name": "claudetuner-local-server",
+  "name": "claudemonitor-local-server",
   "version": "0.1.0",
   "private": true,
-  "description": "Local drop-in backend for the Claude Tuner extension (personal use).",
+  "description": "Local drop-in backend for the Claude Monitor extension (personal use).",
   "scripts": {
     "dev": "next dev -p ${PORT:-3000}",
     "build": "next build",

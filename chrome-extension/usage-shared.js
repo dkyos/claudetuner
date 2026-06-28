@@ -1,4 +1,4 @@
-// Claude Tuner — Shared usage-injection core
+// Claude Monitor — Shared usage-injection core
 // Theme-independent helpers shared by the provider-specific in-page usage panels
 // (currently ChatGPT sidebar + input strip; structured so Gemini/Claude can adopt it).
 // Loaded as the FIRST content script in each provider's injection so the globals

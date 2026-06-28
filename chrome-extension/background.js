@@ -61,7 +61,7 @@ async function registerChatGPTScripts() {
       await chrome.scripting.registerContentScripts([CHATGPT_INJECT]);
     }
   } catch (e) {
-    console.warn('[Claude Tuner] registerChatGPTScripts failed:', e.message);
+    console.warn('[Claude Monitor] registerChatGPTScripts failed:', e.message);
   }
 }
 
@@ -135,7 +135,7 @@ async function mergeChatGPTOrgs(force = false) {
       if (!accountCache?.email) await updateBadgeForSelectedOrg(null);
     }
   } catch (e) {
-    console.warn('[Claude Tuner] ChatGPT collection skipped:', e.message);
+    console.warn('[Claude Monitor] ChatGPT collection skipped:', e.message);
   }
 }
 
@@ -163,7 +163,7 @@ async function mergeGeminiOrgs(force = false) {
       if (!accountCache?.email) await updateBadgeForSelectedOrg(null);
     }
   } catch (e) {
-    console.warn('[Claude Tuner] Gemini collection skipped:', e.message);
+    console.warn('[Claude Monitor] Gemini collection skipped:', e.message);
   }
 }
 
@@ -177,7 +177,7 @@ async function collectAndSend(opts) {
     // while paused. force (manual) bypasses. (collect.js has its own guard for direct
     // Claude calls; this one covers the provider merges below that bypass it.)
     if (!opts?.force && isCollectionPaused(await getCadence())) {
-      console.log('[Claude Tuner] Collection paused by server (provider incident). Skipping all providers.');
+      console.log('[Claude Monitor] Collection paused by server (provider incident). Skipping all providers.');
       return { success: false, paused: true };
     }
     const { collectClaude = true, collectChatGPT = true, collectGemini = true } = await chrome.storage.sync.get({ collectClaude: true, collectChatGPT: true, collectGemini: true });
@@ -287,7 +287,7 @@ if (chrome.runtime.getManifest().update_url === undefined) {
       const resp = await fetch(chrome.runtime.getURL('manifest.json'));
       const disk = await resp.json();
       if (disk.version !== chrome.runtime.getManifest().version) {
-        console.log('[Claude Tuner] Version changed, reloading...');
+        console.log('[Claude Monitor] Version changed, reloading...');
         chrome.runtime.reload();
       }
     } catch (_) { /* ignore */ }
@@ -296,13 +296,13 @@ if (chrome.runtime.getManifest().update_url === undefined) {
 
 // === Install / Startup ===
 chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log('[Claude Tuner] Extension installed');
+  console.log('[Claude Monitor] Extension installed');
   // v1.9.x → v1.10+ migration (skip if already completed)
   if (details.reason === 'update') {
     const { intervalExplicitlySet } = await chrome.storage.sync.get({ intervalExplicitlySet: undefined });
     if (intervalExplicitlySet === undefined) {
       await chrome.storage.sync.set({ intervalExplicitlySet: false });
-      console.log('[Claude Tuner] Migration: intervalExplicitlySet initialized to false');
+      console.log('[Claude Monitor] Migration: intervalExplicitlySet initialized to false');
     }
   }
   // Open welcome page on fresh install (captures ref_source)
@@ -331,7 +331,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     if (optionalOrigins.length > 0) {
       const already = await chrome.permissions.contains({ origins: optionalOrigins });
       if (!already) {
-        console.log('[Claude Tuner] Migration: optional provider permissions not retained, popup will prompt');
+        console.log('[Claude Monitor] Migration: optional provider permissions not retained, popup will prompt');
       }
     }
   }
@@ -368,14 +368,14 @@ chrome.runtime.onConnectExternal.addListener((port) => {
 chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'set_ref_source' && message.ref_source) {
     chrome.storage.local.set({ ref_source: message.ref_source });
-    console.log('[Claude Tuner] ref_source set:', message.ref_source);
+    console.log('[Claude Monitor] ref_source set:', message.ref_source);
     sendResponse({ ok: true });
     return;
   }
 
   if (message && message.type === 'set_org_context' && message.org_name) {
     chrome.storage.local.set({ onboardOrgName: message.org_name }, () => {
-      console.log('[Claude Tuner] onboardOrgName set:', message.org_name);
+      console.log('[Claude Monitor] onboardOrgName set:', message.org_name);
       sendResponse({ ok: true });
     });
     return true; // async sendResponse
@@ -467,7 +467,7 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
             email = acct?.email || acct?.email_address || null;
             userName = acct?.full_name || acct?.display_name || '';
           } catch (e) {
-            console.warn('[Claude Tuner] Login: account API failed:', e.message);
+            console.warn('[Claude Monitor] Login: account API failed:', e.message);
           }
         }
 
@@ -502,7 +502,7 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
         const data = await resp.json();
         sendResponse({ success: true, login_token: data.login_token, email, name: userName });
       } catch (e) {
-        console.error('[Claude Tuner] Login error:', e);
+        console.error('[Claude Monitor] Login error:', e);
         sendResponse({ success: false, error: 'extension_error' });
       }
     })();
@@ -536,11 +536,11 @@ chrome.idle.onStateChanged.addListener(async (newState) => {
   const now = Date.now();
   if (now - _lastIdleCollect < IDLE_COLLECT_THROTTLE_MS) return;
   _lastIdleCollect = now;
-  console.log('[Claude Tuner] System became active (wake/unlock), collecting now');
+  console.log('[Claude Monitor] System became active (wake/unlock), collecting now');
   const result = await collectAndSend().catch(() => null);
   if (result?.success) return;
   // First collect failed (likely network not ready after wake) — schedule retries
-  console.log('[Claude Tuner] Wake collect failed, scheduling retries (10s/30s/60s)');
+  console.log('[Claude Monitor] Wake collect failed, scheduling retries (10s/30s/60s)');
   // 10s: setTimeout (safe — service worker just activated by idle event)
   setTimeout(() => {
     collectAndSend().then(r => { if (r?.success) clearWakeRetries(); }).catch(() => {});
@@ -618,7 +618,7 @@ async function updatePollAlarm() {
   if (!paused && existing && Math.abs(existing.periodInMinutes - interval) < 0.5) return; // no change needed
 
   chrome.alarms.create(ALARM_NAME, { delayInMinutes: delay, periodInMinutes: interval });
-  console.log(`[Claude Tuner] Poll alarm: ${interval}m (collectFloor=${collectFloorMin}m${paused ? `, paused ${delay}m` : ''})`);
+  console.log(`[Claude Monitor] Poll alarm: ${interval}m (collectFloor=${collectFloorMin}m${paused ? `, paused ${delay}m` : ''})`);
 }
 
 // === Auto-open side panel on first Claude.ai visit after fresh install ===
@@ -631,10 +631,10 @@ async function tryAutoOpenSidePanel(tabId) {
     await chrome.storage.local.set({ sidePanelAutoOpened: true });
     if (chrome.sidePanel && chrome.sidePanel.open) {
       await chrome.sidePanel.open({ tabId });
-      console.log('[Claude Tuner] Side panel auto-opened on first Claude.ai visit');
+      console.log('[Claude Monitor] Side panel auto-opened on first Claude.ai visit');
     }
   } catch (e) {
-    console.log('[Claude Tuner] Side panel auto-open skipped:', e.message);
+    console.log('[Claude Monitor] Side panel auto-open skipped:', e.message);
   }
 }
 
@@ -671,12 +671,12 @@ async function tryTabCollect(reason) {
       }
       if (resetCount > 0) {
         await chrome.storage.local.set({ orgPollState });
-        console.log(`[Claude Tuner] Adaptive poll: ${resetCount} org(s) reset to active (${reason})`);
+        console.log(`[Claude Monitor] Adaptive poll: ${resetCount} org(s) reset to active (${reason})`);
       }
     }
   } catch (_) { /* ignore poll state reset failure */ }
 
-  console.log(`[Claude Tuner] Tab collect triggered: ${reason}${wasError ? ' (retry after error)' : ''}`);
+  console.log(`[Claude Monitor] Tab collect triggered: ${reason}${wasError ? ' (retry after error)' : ''}`);
 
   // Coarse server-path floor (same as the alarm handler): run the server path
   // at most ~every SEND_MIN_INTERVAL; the per-org delta-gate inside
@@ -736,10 +736,10 @@ chrome.tabs.onRemoved.addListener(async () => {
 chrome.cookies.onChanged.addListener((info) => {
   if (info.cookie.name === 'lastActiveOrg' && info.cookie.domain?.includes('claude.ai') && !info.removed) {
     if (_collecting) {
-      console.log(`[Claude Tuner] lastActiveOrg cookie changed → ${info.cookie.value} (suppressed: collecting)`);
+      console.log(`[Claude Monitor] lastActiveOrg cookie changed → ${info.cookie.value} (suppressed: collecting)`);
       return;
     }
-    console.log(`[Claude Tuner] lastActiveOrg cookie changed → ${info.cookie.value}`);
+    console.log(`[Claude Monitor] lastActiveOrg cookie changed → ${info.cookie.value}`);
     // Notify popup/side panel immediately (for chip switch before collection completes)
     chrome.runtime.sendMessage({ type: 'ORG_COOKIE_CHANGED', orgId: info.cookie.value }).catch(() => {});
     tryTabCollect('cookie-org-changed');
@@ -775,7 +775,7 @@ chrome.webRequest.onCompleted.addListener(
         _429BackoffMs ? _429BackoffMs * 2 : RATELIMIT_BASE_THROTTLE_MS * 2,
         RATELIMIT_MAX_THROTTLE_MS
       );
-      console.log(`[Claude Tuner] 429 detected: ${details.url.split('?')[0]} (next throttle ${Math.round(_429BackoffMs / 1000)}s)`);
+      console.log(`[Claude Monitor] 429 detected: ${details.url.split('?')[0]} (next throttle ${Math.round(_429BackoffMs / 1000)}s)`);
       // force: a rate-limit event is a real usage change — always post it, even if
       // the primary org's adaptive tier would otherwise be mid-interval (idle/dormant).
       collectAndSend({ force: true }).then((result) => {
@@ -809,11 +809,11 @@ async function evaluateBoost(snapshot) {
     const boostInterval = Math.max(intervalMinutes / 2, 1);
     chrome.alarms.create(ALARM_BOOST, { delayInMinutes: boostInterval, periodInMinutes: boostInterval });
     await chrome.storage.local.set({ boostActive: true });
-    console.log(`[Claude Tuner] Boost ON: 5h=${util5h}%, interval=${boostInterval}m`);
+    console.log(`[Claude Monitor] Boost ON: 5h=${util5h}%, interval=${boostInterval}m`);
   } else if (!shouldBoost && existing) {
     chrome.alarms.clear(ALARM_BOOST);
     await chrome.storage.local.set({ boostActive: false });
-    console.log(`[Claude Tuner] Boost OFF: 5h=${util5h}%, rising=${isRising}`);
+    console.log(`[Claude Monitor] Boost OFF: 5h=${util5h}%, rising=${isRising}`);
   }
 }
 
@@ -821,7 +821,7 @@ async function evaluateBoost(snapshot) {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   // Wake-from-sleep retries (30s / 60s alarms)
   if (alarm.name.startsWith(WAKE_RETRY_ALARM)) {
-    console.log(`[Claude Tuner] Wake retry alarm: ${alarm.name}`);
+    console.log(`[Claude Monitor] Wake retry alarm: ${alarm.name}`);
     const result = await collectAndSend().catch(() => null);
     if (result?.success) clearWakeRetries();
     return;
@@ -857,7 +857,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
   // Handle expire alarms (5min-before notification, 2min/1min/at-reset collection, post-reset notification)
   if (alarm.name.startsWith(ALARM_EXPIRE_PREFIX)) {
-    console.log(`[Claude Tuner] Expire alarm fired: ${alarm.name}`);
+    console.log(`[Claude Monitor] Expire alarm fired: ${alarm.name}`);
 
     // Notification 5 minutes before reset
     if (alarm.name.includes('-notify5')) {
@@ -1027,7 +1027,7 @@ async function scheduleExpireAlarms(snapshot) {
   }
 
   if (scheduled > 0) {
-    console.log(`[Claude Tuner] ${scheduled} expire alarms scheduled`);
+    console.log(`[Claude Monitor] ${scheduled} expire alarms scheduled`);
   }
 
   // Stash provider/org context so the alarm-fire notification can show it.
@@ -1162,7 +1162,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: cpo.order_id, user_email: email }),
               });
-            } catch (e) { console.error('[Claude Tuner] Failed to report revert:', e.message); }
+            } catch (e) { console.error('[Claude Monitor] Failed to report revert:', e.message); }
           }
         }
         await chrome.storage.local.set({ completedPlanOrder: null });

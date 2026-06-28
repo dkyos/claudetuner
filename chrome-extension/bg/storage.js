@@ -73,7 +73,7 @@ export async function mergeServerSnapshots(serverSnaps, currentPlan, orgUuid) {
         const cutoff = Date.now() - HISTORY_MAX_AGE_MS;
         const trimmed = history.filter((p) => p.t > cutoff);
         chrome.storage.local.set({ usageHistory: trimmed }, () => {
-          console.log(`[Claude Tuner] Merged ${added} server snapshots into local history`);
+          console.log(`[Claude Monitor] Merged ${added} server snapshots into local history`);
           resolve();
         });
       } else {
@@ -189,7 +189,7 @@ export async function authedFetch(config, url, options = {}) {
     if (cleared) {
       try {
         const path = new URL(url).pathname;
-        console.log(`[Claude Tuner] ext_token cleared (401) at ${path}`);
+        console.log(`[Claude Monitor] ext_token cleared (401) at ${path}`);
       } catch { /* ignore URL parse errors */ }
     }
   }
@@ -232,7 +232,7 @@ export async function postSnapshot(config, payload) {
   if (response.status === 401 || response.status === 403) {
     const cleared = await clearExtTokenIfMatches(sentToken);
     if (cleared) {
-      console.log(`[Claude Tuner] ext_token cleared (${response.status}). Will re-auth on next cycle.`);
+      console.log(`[Claude Monitor] ext_token cleared (${response.status}). Will re-auth on next cycle.`);
       // Independent accounts cannot fall back to API_KEY — flag for re-sign-in UI.
       await chrome.storage.local.set({ needsReauth: true });
     }
@@ -242,7 +242,7 @@ export async function postSnapshot(config, payload) {
   if (response.status === 410) {
     const errData = await response.json().catch(() => ({}));
     if (errData.account_deleted) {
-      console.log('[Claude Tuner] Account has been deleted. Stopping collection.');
+      console.log('[Claude Monitor] Account has been deleted. Stopping collection.');
       await chrome.storage.local.set({ account_deleted: true });
       chrome.alarms.clear(ALARM_NAME);
       chrome.action.setBadgeText({ text: '!' });
@@ -252,7 +252,7 @@ export async function postSnapshot(config, payload) {
   }
 
   if (!response.ok) {
-    console.warn(`[Claude Tuner] Server POST failed: ${response.status} ${response.statusText}`);
+    console.warn(`[Claude Monitor] Server POST failed: ${response.status} ${response.statusText}`);
     // 5xx → server/D1 overload: extend the shared backoff. (401/403/410 returned
     // above are persistent per-user issues, not server health — they don't back off.)
     if (response.status >= 500) await noteServerFailure();
